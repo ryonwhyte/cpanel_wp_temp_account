@@ -1,0 +1,37 @@
+{
+    "name": "wp_temp_accounts",
+    "vendor": "Ryon Whyte",
+    "version": "3.0",
+    "homepage": "https://ryonwhyte.com",
+    "description": {
+        "en": "Create and manage temporary WordPress administrator accounts with automatic cleanup"
+    },
+    "icon": "icon.svg",
+    "categories": [
+        "software"
+    ],
+    "install_path": "/usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account",
+    "plugins": [
+        {
+            "name": "wp_temp_accounts",
+            "description": {
+                "en": "WP Temporary Accounts"
+            },
+            "url": "cpanel_wp_temp_account/cpanel_wp_temp_account.html",
+            "icon": "cpanel_wp_temp_account/icon.svg",
+            "feature": "wp_temp_accounts"
+        }
+    ],
+    "features": [
+        {
+            "name": "wp_temp_accounts",
+            "description": {
+                "en": "Access to WP Temporary Accounts plugin"
+            }
+        }
+    ],
+    "acls": [
+        "software-wp_temp_accounts"
+    ],
+    "minimum_cpanel_version": "11.90"
+}
