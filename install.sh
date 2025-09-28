@@ -5,6 +5,36 @@
 
 set -euo pipefail
 
+# Parse command line arguments
+FORCE_INSTALL=false
+SKIP_MODULES=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --force)
+            FORCE_INSTALL=true
+            shift
+            ;;
+        --skip-modules)
+            SKIP_MODULES=true
+            shift
+            ;;
+        --help)
+            echo "Usage: $0 [options]"
+            echo "Options:"
+            echo "  --force        Force installation without prompts"
+            echo "  --skip-modules Skip module installation attempts"
+            echo "  --help         Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -47,11 +77,16 @@ fi
 
 # Check for WP Toolkit
 if [ ! -d "/usr/local/cpanel/3rdparty/wp-toolkit" ] && [ ! -f "/usr/local/cpanel/scripts/wpt" ]; then
-    log_warning "WP Toolkit might not be installed. The plugin requires WP Toolkit to function."
-    read -p "Continue anyway? (y/n): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
+    log_warning "WP Toolkit might not be installed."
+    log_info "Note: This plugin now supports direct WordPress access without WP Toolkit."
+    if [ "$FORCE_INSTALL" = false ]; then
+        read -p "Continue anyway? (y/n): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    else
+        log_info "Continuing with --force flag..."
     fi
 fi
 
@@ -86,20 +121,151 @@ if [ ${#MISSING_MODULES[@]} -gt 0 ]; then
     for module in "${MISSING_MODULES[@]}"; do
         echo "  - $module"
     done
-    log_info "Attempting to install missing modules..."
 
-    # Install missing modules
+    if [ "$SKIP_MODULES" = true ]; then
+        log_info "Skipping module installation (--skip-modules flag)"
+    else
+        log_info "Attempting to install missing modules..."
+
+        # Function to try multiple installation methods
+    install_perl_module() {
+        local module="$1"
+        local success=false
+
+        # Skip Cpanel::Logger as it should be available with cPanel
+        if [[ "$module" == "Cpanel::Logger" ]]; then
+            log_info "Skipping $module (should be available with cPanel)"
+            return 0
+        fi
+
+        log_info "Installing $module..."
+
+        # Method 1: Try cPanel's cpanm first
+        if [ -x "/usr/local/cpanel/3rdparty/bin/cpanm" ]; then
+            log_info "  Trying cPanel cpanm..."
+            if /usr/local/cpanel/3rdparty/bin/cpanm --quiet --notest "$module" 2>/dev/null; then
+                log_info "  ✅ Successfully installed $module via cPanel cpanm"
+                return 0
+            fi
+        fi
+
+        # Method 2: Try system cpanm
+        if command -v cpanm >/dev/null 2>&1; then
+            log_info "  Trying system cpanm..."
+            if cpanm --quiet --notest "$module" 2>/dev/null; then
+                log_info "  ✅ Successfully installed $module via system cpanm"
+                return 0
+            fi
+        fi
+
+        # Method 3: Try CPAN
+        if command -v cpan >/dev/null 2>&1; then
+            log_info "  Trying CPAN..."
+            if echo "install $module" | cpan 2>/dev/null | grep -q "OK"; then
+                log_info "  ✅ Successfully installed $module via CPAN"
+                return 0
+            fi
+        fi
+
+        # Method 4: Try package manager for common modules
+        case "$module" in
+            "CGI")
+                for pkg_mgr in "yum install -y perl-CGI" "dnf install -y perl-CGI" "apt-get install -y libcgi-pm-perl"; do
+                    if command -v "${pkg_mgr%% *}" >/dev/null 2>&1; then
+                        log_info "  Trying package manager: $pkg_mgr"
+                        if $pkg_mgr >/dev/null 2>&1; then
+                            log_info "  ✅ Successfully installed $module via package manager"
+                            return 0
+                        fi
+                    fi
+                done
+                ;;
+            "Crypt::CBC")
+                for pkg_mgr in "yum install -y perl-Crypt-CBC" "dnf install -y perl-Crypt-CBC" "apt-get install -y libcrypt-cbc-perl"; do
+                    if command -v "${pkg_mgr%% *}" >/dev/null 2>&1; then
+                        log_info "  Trying package manager: $pkg_mgr"
+                        if $pkg_mgr >/dev/null 2>&1; then
+                            log_info "  ✅ Successfully installed $module via package manager"
+                            return 0
+                        fi
+                    fi
+                done
+                ;;
+        esac
+
+        log_warning "  ❌ Failed to install $module via all methods"
+        return 1
+    }
+
+    # Install missing modules with detailed feedback
+    FAILED_MODULES=()
     for module in "${MISSING_MODULES[@]}"; do
-        if [[ "$module" == "Crypt::CBC" ]]; then
-            /usr/local/cpanel/3rdparty/bin/cpanm Crypt::CBC Crypt::Blowfish 2>/dev/null || {
-                log_warning "Failed to install $module. You may need to install it manually."
-            }
-        elif [[ "$module" != "Cpanel::Logger" ]]; then
-            /usr/local/cpanel/3rdparty/bin/cpanm "$module" 2>/dev/null || {
-                log_warning "Failed to install $module. You may need to install it manually."
-            }
+        if ! install_perl_module "$module"; then
+            FAILED_MODULES+=("$module")
         fi
     done
+
+    # Re-check which modules are still missing after installation attempts
+    log_info "Re-checking module availability..."
+    STILL_MISSING=()
+    for module in "${MISSING_MODULES[@]}"; do
+        if ! perl -M"$module" -e '' 2>/dev/null; then
+            STILL_MISSING+=("$module")
+        fi
+    done
+
+    if [ ${#STILL_MISSING[@]} -eq 0 ]; then
+        log_info "✅ All required Perl modules are now available!"
+    elif [ ${#STILL_MISSING[@]} -lt ${#MISSING_MODULES[@]} ]; then
+        log_info "✅ Successfully installed some modules. Still missing:"
+        for module in "${STILL_MISSING[@]}"; do
+            echo "  - $module"
+        done
+        echo ""
+        log_warning "The plugin may still work with reduced functionality."
+        echo "You can manually install the remaining modules later with:"
+        for module in "${STILL_MISSING[@]}"; do
+            echo "  /usr/local/cpanel/3rdparty/bin/cpanm $module"
+        done
+        echo ""
+        if [ "$FORCE_INSTALL" = false ]; then
+            read -p "Continue with installation? (y/n): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                log_error "Installation cancelled by user."
+                exit 1
+            fi
+        else
+            log_info "Continuing with --force flag..."
+        fi
+    else
+        log_warning "❌ Could not install any missing modules automatically."
+        echo ""
+        log_warning "Manual installation commands:"
+        for module in "${STILL_MISSING[@]}"; do
+            echo "  /usr/local/cpanel/3rdparty/bin/cpanm $module"
+        done
+        echo ""
+        log_warning "The plugin may work with reduced functionality, but installing these modules is recommended."
+        echo ""
+        log_info "Note: The plugin has fallback mechanisms and may work without some modules."
+        echo "Core functionality (account creation/deletion) should still work."
+        echo ""
+        if [ "$FORCE_INSTALL" = false ]; then
+            read -p "Continue with installation anyway? (y/n): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                log_error "Installation cancelled by user."
+                log_info "Tip: Try running the installation again after installing the missing modules."
+                exit 1
+            fi
+        else
+            log_info "Continuing with --force flag..."
+        fi
+    fi
+    fi  # End of else block for SKIP_MODULES
+else
+    log_info "✅ All required Perl modules are available!"
 fi
 
 # Define installation directory
@@ -142,8 +308,8 @@ cp "$SCRIPT_DIR/cpanel_wp_temp_account.css" "$INSTALL_DIR/cpanel_wp_temp_account
 cat > "$INSTALL_DIR/plugin.json" << 'EOF'
 {
     "name": "WP Temporary Accounts",
-    "version": "2.0",
-    "description": "Create and manage temporary WordPress administrator accounts with automatic cleanup",
+    "version": "3.0",
+    "description": "Create and manage temporary WordPress administrator accounts with universal compatibility and automatic cleanup",
     "author": "Your Name",
     "url": "https://your-website.com",
     "security_features": {
@@ -165,8 +331,8 @@ echo "Uninstalling WP Temporary Accounts Plugin..."
 rm -rf /usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account
 
 # Clean up user data (optional)
-read -p "Remove all user data and logs? (y/n): " -n 1 -r
-echo
+echo "Remove all user data and logs? (y/n): "
+read -r REPLY
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     for user_home in /home/*; do
         if [ -d "$user_home/.wp_temp_accounts" ]; then
@@ -258,11 +424,12 @@ echo "  ✅ Secure Password Generation"
 echo "  ✅ Encrypted Storage Support"
 echo ""
 echo "Features:"
+echo "  - Universal WordPress compatibility (WP Toolkit + Direct Database)"
 echo "  - Automatic host/session detection"
 echo "  - Works with both cPanel (port 2083) and WHM (port 2087)"
-echo "  - Clean, responsive interface"
+echo "  - Clean, responsive interface with real-time updates"
 echo "  - Automatic cleanup via cron"
-echo "  - Detailed logging"
+echo "  - Comprehensive logging and health monitoring"
 echo ""
 echo "Logs and Configuration:"
 echo "  - User logs: ~/.wp_temp_accounts/accounts.log"
