@@ -302,6 +302,11 @@ cp "$SCRIPT_DIR/cpanel_wp_temp_account.js" "$INSTALL_DIR/cpanel_wp_temp_account.
 cp "$SCRIPT_DIR/cpanel_wp_temp_account.html" "$INSTALL_DIR/cpanel_wp_temp_account.html"
 cp "$SCRIPT_DIR/cpanel_wp_temp_account.css" "$INSTALL_DIR/cpanel_wp_temp_account.css"
 
+# Copy icon and integration files
+[ -f "$SCRIPT_DIR/icon.svg" ] && cp "$SCRIPT_DIR/icon.svg" "$INSTALL_DIR/icon.svg"
+[ -f "$SCRIPT_DIR/icon.css" ] && cp "$SCRIPT_DIR/icon.css" "$INSTALL_DIR/icon.css"
+[ -f "$SCRIPT_DIR/cpanel_integration.conf" ] && cp "$SCRIPT_DIR/cpanel_integration.conf" "$INSTALL_DIR/cpanel_integration.conf"
+
 # File references are already updated in the source files
 
 # Create plugin.json for metadata
@@ -386,10 +391,65 @@ chmod +x "$CRON_SCRIPT"
 # Add to root's crontab
 (crontab -l 2>/dev/null | grep -v "cpanel_wp_temp_account_cleanup"; echo "0 * * * * /usr/local/cpanel/scripts/cpanel_wp_temp_account_cleanup >/dev/null 2>&1") | crontab -
 
-# Restart cPanel services (optional - usually not needed for plugins)
+# Register plugin with cPanel interface
+log_info "Registering plugin with cPanel..."
+
+# Use the comprehensive registration script if available
+if [ -f "$SCRIPT_DIR/register_plugin.sh" ]; then
+    log_info "Using comprehensive registration script..."
+    bash "$SCRIPT_DIR/register_plugin.sh" 2>/dev/null || {
+        log_warning "Comprehensive registration failed, using basic registration..."
+        # Fallback to basic registration
+        FEATURE_FILE="/var/cpanel/apps/cpanel_wp_temp_account.conf"
+        cat > "$FEATURE_FILE" << 'EOF'
+---
+name: cpanel_wp_temp_account
+version: 3.0
+vendor: Ryon Whyte
+url: cpanel_wp_temp_account.html
+feature: cpanel_wp_temp_account
+helpurl: 'https://github.com/ryonwhyte/cpanel-wp-temp-account'
+subtype: application
+group: software
+order: 95
+description: 'Create and manage temporary WordPress administrator accounts'
+acls:
+  - feature-cpanel_wp_temp_account
+demourl: ''
+EOF
+        chmod 644 "$FEATURE_FILE"
+    }
+else
+    # Basic registration if registration script not found
+    FEATURE_FILE="/var/cpanel/apps/cpanel_wp_temp_account.conf"
+    cat > "$FEATURE_FILE" << 'EOF'
+---
+name: cpanel_wp_temp_account
+version: 3.0
+vendor: Ryon Whyte
+url: cpanel_wp_temp_account.html
+feature: cpanel_wp_temp_account
+helpurl: 'https://github.com/ryonwhyte/cpanel-wp-temp-account'
+subtype: application
+group: software
+order: 95
+description: 'Create and manage temporary WordPress administrator accounts'
+acls:
+  - feature-cpanel_wp_temp_account
+demourl: ''
+EOF
+    chmod 644 "$FEATURE_FILE"
+fi
+
+# Restart cPanel services
 log_info "Updating cPanel configuration..."
+/usr/local/cpanel/bin/rebuild_sprites 2>/dev/null || true
 /scripts/rebuildhttpdconf 2>/dev/null || true
 /scripts/restartsrv_httpd 2>/dev/null || true
+/scripts/restartsrv_cpsrvd 2>/dev/null || true
+
+# Clear cPanel cache
+rm -rf /usr/local/cpanel/var/cache/* 2>/dev/null || true
 
 # Verify installation
 log_info "Verifying installation..."
@@ -412,8 +472,16 @@ echo ""
 echo "The WP Temporary Accounts plugin has been installed."
 echo ""
 echo "Access the plugin:"
-echo "  - cPanel: Software > WP Temporary Accounts"
-echo "  - Direct: /frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.html"
+echo "  - cPanel: Software → WP Temporary Accounts"
+echo "  - WHM: Plugins → WP Temporary Accounts"
+echo "  - Direct cPanel: https://your-domain:2083/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.html"
+echo "  - Direct WHM: https://your-server:2087/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.html"
+echo ""
+echo "🔍 If the plugin doesn't appear in the interface:"
+echo "  1. Wait 1-2 minutes for cPanel cache refresh"
+echo "  2. Log out and log back into cPanel/WHM"
+echo "  3. Try the direct URL access first"
+echo "  4. Run: ./register_plugin.sh (for manual registration)"
 echo ""
 echo "Security Features:"
 echo "  ✅ CSRF Protection"

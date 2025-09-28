@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wpGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#21759B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#464646;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="clockGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFA500;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF6B00;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="24" cy="24" r="22" fill="url(#wpGradient)" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- WordPress W symbol -->
+  <g transform="translate(24,24)">
+    <!-- Main W shape -->
+    <path d="M-12,-8 L-8,8 L-4,-4 L0,8 L4,-4 L8,8 L12,-8 L8,-8 L4,-2 L0,-8 L-4,-2 L-8,-8 Z"
+          fill="white" opacity="0.9"/>
+  </g>
+
+  <!-- Clock/Timer overlay -->
+  <g transform="translate(32,16)">
+    <circle cx="0" cy="0" r="8" fill="url(#clockGradient)" stroke="white" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="1" fill="white"/>
+    <!-- Clock hands -->
+    <line x1="0" y1="0" x2="0" y2="-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="3" y2="0" stroke="white" stroke-width="1" stroke-linecap="round"/>
+  </g>
+
+  <!-- User icon overlay -->
+  <g transform="translate(16,32)">
+    <circle cx="0" cy="0" r="6" fill="#4ade80" stroke="white" stroke-width="1.5"/>
+    <!-- User head -->
+    <circle cx="0" cy="-1" r="2" fill="white"/>
+    <!-- User body -->
+    <path d="M-2.5,1 Q-2.5,3 0,3 Q2.5,3 2.5,1" fill="white" stroke="none"/>
+  </g>
+</svg>
