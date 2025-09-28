@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WHM/cPanel WP Temporary Account</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="cpanel_wp_temp_account.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="cpanel_wp_temp_account.js"></script>
+</head>
+<body>
+    <div class="cpanel-container">
+        <div class="cpanel-header">
+            <h1>
+                <img src="/cpanel-images/wp.png" alt="WordPress" width="32" height="32" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzIxNzU5QiIvPgo8cGF0aCBkPSJNMTYgOEMxMS41ODI3IDggOCA5LjU4MjcgOCAxNC41VjE3LjVDOCAyMi40MTczIDExLjU4MjcgMjQgMTYgMjRDMjAuNDE3MyAyNCAyNCAyMi40MTczIDI0IDE3LjVWMTQuNUMyNCA5LjU4MjcgMjAuNDE3MyA4IDE2IDhaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K'">
+                WHM/cPanel WP Temporary Account
+            </h1>
+            <p>Create and manage temporary WordPress administrator accounts with automatic cleanup.</p>
+        </div>
+
+        <!-- System Info (for debugging) -->
+        <div id="systemInfo" class="cpanel-section" style="display: none;">
+            <h2>System Information</h2>
+            <div id="systemDetails" class="cpanel-info-box"></div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div class="cpanel-section dashboard-section">
+            <h2>Dashboard Overview</h2>
+            <div class="dashboard-grid">
+                <div class="dashboard-card" id="activeAccountsCard">
+                    <div class="card-icon">👥</div>
+                    <div class="card-content">
+                        <div class="card-number" id="activeCount">-</div>
+                        <div class="card-label">Active Accounts</div>
+                        <div class="card-status" id="activeStatus">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card" id="expiredTodayCard">
+                    <div class="card-icon">⏰</div>
+                    <div class="card-content">
+                        <div class="card-number" id="expiredTodayCount">-</div>
+                        <div class="card-label">Expired Today</div>
+                        <div class="card-status">Auto-cleanup enabled</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card" id="createdTodayCard">
+                    <div class="card-icon">✨</div>
+                    <div class="card-content">
+                        <div class="card-number" id="createdTodayCount">-</div>
+                        <div class="card-label">Created Today</div>
+                        <div class="card-status" id="rateLimitStatus">-</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card" id="alertsCard">
+                    <div class="card-icon">🚨</div>
+                    <div class="card-content">
+                        <div class="card-number" id="alertsCount">-</div>
+                        <div class="card-label">Active Alerts</div>
+                        <div class="card-status" id="alertsStatus">Checking...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts Section -->
+            <div id="alertsSection" style="display: none;">
+                <h3>System Alerts</h3>
+                <div id="alertsList"></div>
+            </div>
+
+            <!-- Site Activity Chart -->
+            <div class="dashboard-chart">
+                <h3>Active Accounts by Site</h3>
+                <div id="siteChart" class="chart-container">
+                    <div class="chart-placeholder">Loading site statistics...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cpanel-content">
+            <!-- Create Account Section -->
+            <div class="cpanel-section">
+                <h2>Create Temporary Account</h2>
+                <div class="cpanel-form">
+                    <form id="createAccountForm">
+                        <!-- Honeypot field - hidden from users but visible to bots -->
+                        <div class="honeypot-field">
+                            <label for="website">Website URL (leave blank):</label>
+                            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="wpSite">WordPress Site:</label>
+                            <select id="wpSite" name="domain" required>
+                                <option value="">Loading WordPress sites...</option>
+                            </select>
+                            <span class="form-help">Select the WordPress installation to create an account for</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="expiryHours">Account Expires In:</label>
+                            <select id="expiryHours" name="hours">
+                                <option value="1">1 Hour</option>
+                                <option value="6">6 Hours</option>
+                                <option value="12">12 Hours</option>
+                                <option value="24" selected>24 Hours (1 Day)</option>
+                                <option value="48">48 Hours (2 Days)</option>
+                                <option value="72">72 Hours (3 Days)</option>
+                                <option value="168">1 Week</option>
+                            </select>
+                            <span class="form-help">Account will be automatically deleted after this time</span>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="cpanel-button cpanel-button-primary">
+                                <span class="icon">+</span>
+                                Create Temporary Account
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultSection" class="cpanel-section" style="display: none;">
+                <h2>Account Created Successfully</h2>
+                <div id="accountDetails" class="cpanel-info-box"></div>
+            </div>
+
+            <!-- Recent Activity Section -->
+            <div class="cpanel-section">
+                <h2>Recent Activity</h2>
+                <div class="activity-container">
+                    <div id="activityFeed" class="activity-feed">
+                        <div class="activity-loading">Loading recent activity...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Accounts Section -->
+            <div class="cpanel-section">
+                <h2>Active Temporary Accounts</h2>
+                <div class="cpanel-toolbar">
+                    <div class="toolbar-section">
+                        <input type="text" id="accountSearch" placeholder="Search accounts..." class="search-input">
+                        <select id="statusFilter" class="filter-select">
+                            <option value="">All Status</option>
+                            <option value="active">Active Only</option>
+                            <option value="expiring">Expiring Soon</option>
+                        </select>
+                        <select id="siteFilter" class="filter-select">
+                            <option value="">All Sites</option>
+                        </select>
+                    </div>
+                    <div class="toolbar-section">
+                        <button id="refreshAccounts" class="cpanel-button">
+                            <span class="icon">🔄</span>
+                            Refresh List
+                        </button>
+                        <button id="cleanupExpired" class="cpanel-button cpanel-button-warning">
+                            <span class="icon">🗑️</span>
+                            Cleanup Expired
+                        </button>
+                        <button id="toggleSystemInfo" class="cpanel-button">
+                            <span class="icon">ℹ️</span>
+                            System Info
+                        </button>
+                    </div>
+                </div>
+                <div id="accountsList" class="cpanel-table-container">
+                    <p>Loading accounts...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="statusMessages"></div>
+    </div>
+
+    <!-- Account Details Modal -->
+    <div id="accountModal" class="cpanel-modal" style="display: none;">
+        <div class="cpanel-modal-content">
+            <div class="cpanel-modal-header">
+                <h3>Account Details</h3>
+                <span class="cpanel-modal-close">&times;</span>
+            </div>
+            <div class="cpanel-modal-body" id="modalContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="cpanel-modal-footer">
+                <button class="cpanel-button" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
