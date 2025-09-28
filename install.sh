@@ -310,8 +310,8 @@ cat > "$INSTALL_DIR/plugin.json" << 'EOF'
     "name": "WP Temporary Accounts",
     "version": "3.0",
     "description": "Create and manage temporary WordPress administrator accounts with universal compatibility and automatic cleanup",
-    "author": "Your Name",
-    "url": "https://your-website.com",
+    "author": "Ryon Whyte",
+    "url": "https://ryonwhyte.com",
     "security_features": {
         "csrf_protection": true,
         "input_validation": true,
