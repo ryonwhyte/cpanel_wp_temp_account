@@ -82,15 +82,11 @@ cd cpanel_wp_temp_account
 ./install_whm.sh
 ```
 
-3. Create the required 48x48 PNG icon:
-```bash
-./create_icon.sh
-```
-
 The installer will:
 - Create WHM plugin directories
-- Register with AppConfig system
-- Copy files to correct WHM locations
+- Install CGI script with proper WHM registration
+- Copy Template Toolkit files for WHM integration
+- Install 48x48 PNG icon for menu display
 - Set up automatic cleanup via cron
 - Configure proper permissions
 
@@ -339,15 +335,25 @@ Install missing modules using cpanm:
 
 ## Uninstallation
 
+### Standard Uninstall
 Run the uninstall script:
 ```bash
-/usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account/uninstall.sh
+./uninstall_whm.sh
 ```
 
-Or manually remove:
+### Complete Cleanup (if needed)
+For a thorough cleanup that removes ALL traces:
 ```bash
-rm -rf /usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account
+./complete_cleanup.sh
 ```
+
+This comprehensive cleanup script will:
+- Remove all plugin files from all possible locations
+- Clear all WHM caches
+- Remove cron jobs
+- Optionally remove user data
+- Restart WHM services
+- Provide browser cleanup instructions
 
 ## Development
 

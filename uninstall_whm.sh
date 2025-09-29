@@ -34,25 +34,51 @@ echo "WHM Plugin Uninstallation: WP Temporary Accounts"
 echo "=================================================="
 echo ""
 
-# Define WHM plugin directories
-WHM_CGI_DIR="/usr/local/cpanel/whostmgr/docroot/cgi/addons/wp_temp_accounts"
-WHM_TEMPLATES_DIR="/usr/local/cpanel/whostmgr/docroot/templates/wp_temp_accounts"
-WHM_ADDON_DIR="/usr/local/cpanel/whostmgr/docroot/addon_plugins"
+# Define WHM plugin directories (handles both old and new patterns)
+WHM_DOCROOT="/usr/local/cpanel/whostmgr/docroot"
+
+# New LiteSpeed pattern locations
+WHM_PLUGIN_DIR="${WHM_DOCROOT}/cgi/wp_temp_accounts"
+WHM_TEMPLATES_DIR_NEW="${WHM_DOCROOT}/templates/wp_temp_accounts"
+
+# Old AppConfig pattern locations
+WHM_CGI_DIR_OLD="${WHM_DOCROOT}/cgi/addons/wp_temp_accounts"
+WHM_TEMPLATES_DIR_OLD="${WHM_DOCROOT}/templates/wp_temp_accounts"
+
+# Common locations
+WHM_ADDON_DIR="${WHM_DOCROOT}/addon_plugins"
 SHARED_DIR="/usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account"
 APPCONFIG_FILE="/var/cpanel/apps/wp_temp_accounts.conf"
 CRON_SCRIPT="/usr/local/cpanel/scripts/cpanel_wp_temp_account_cleanup"
 
 log_info "Removing WHM plugin files..."
 
-# Remove WHM plugin directories
-if [ -d "$WHM_CGI_DIR" ]; then
-    rm -rf "$WHM_CGI_DIR"
-    log_info "✅ Removed CGI directory"
+# Remove NEW LiteSpeed pattern directories
+if [ -d "$WHM_PLUGIN_DIR" ]; then
+    rm -rf "$WHM_PLUGIN_DIR"
+    log_info "✅ Removed new LiteSpeed pattern CGI directory: $WHM_PLUGIN_DIR"
 fi
 
-if [ -d "$WHM_TEMPLATES_DIR" ]; then
-    rm -rf "$WHM_TEMPLATES_DIR"
-    log_info "✅ Removed templates directory"
+if [ -d "$WHM_TEMPLATES_DIR_NEW" ]; then
+    rm -rf "$WHM_TEMPLATES_DIR_NEW"
+    log_info "✅ Removed new templates directory: $WHM_TEMPLATES_DIR_NEW"
+fi
+
+# Remove OLD AppConfig pattern directories (if they exist)
+if [ -d "$WHM_CGI_DIR_OLD" ]; then
+    rm -rf "$WHM_CGI_DIR_OLD"
+    log_info "✅ Removed old AppConfig CGI directory: $WHM_CGI_DIR_OLD"
+fi
+
+if [ -d "$WHM_TEMPLATES_DIR_OLD" ]; then
+    rm -rf "$WHM_TEMPLATES_DIR_OLD"
+    log_info "✅ Removed old templates directory: $WHM_TEMPLATES_DIR_OLD"
+fi
+
+# Also check for any standalone CGI files in the main cgi directory
+if [ -f "${WHM_DOCROOT}/cgi/wp_temp_accounts.cgi" ]; then
+    rm -f "${WHM_DOCROOT}/cgi/wp_temp_accounts.cgi"
+    log_info "✅ Removed standalone CGI file"
 fi
 
 # Remove icon
@@ -61,10 +87,12 @@ if [ -f "$WHM_ADDON_DIR/wp_temp_accounts_icon.png" ]; then
     log_info "✅ Removed plugin icon"
 fi
 
-# Remove AppConfig registration
+# Remove AppConfig registration (only needed for old pattern)
 if [ -f "$APPCONFIG_FILE" ]; then
     rm -f "$APPCONFIG_FILE"
-    log_info "✅ Removed AppConfig registration"
+    log_info "✅ Removed AppConfig registration (old pattern)"
+else
+    log_info "ℹ️  No AppConfig file found (new LiteSpeed pattern doesn't use AppConfig)"
 fi
 
 # Remove shared directory (optional - ask user)
