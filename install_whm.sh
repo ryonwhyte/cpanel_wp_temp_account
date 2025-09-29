@@ -38,7 +38,7 @@ echo ""
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Define WHM plugin directories
-WHM_CGI_DIR="/usr/local/cpanel/whostmgr/docroot/cgi/wp_temp_accounts"
+WHM_CGI_DIR="/usr/local/cpanel/whostmgr/docroot/cgi/addons/wp_temp_accounts"
 WHM_TEMPLATES_DIR="/usr/local/cpanel/whostmgr/docroot/templates/wp_temp_accounts"
 WHM_ADDON_DIR="/usr/local/cpanel/whostmgr/docroot/addon_plugins"
 APPS_DIR="/var/cpanel/apps"
@@ -64,9 +64,39 @@ chmod 755 "$APPS_DIR"
 
 log_info "Copying plugin files to WHM directories..."
 
-# Copy CGI script
-cp "$SCRIPT_DIR/wp_temp_accounts.cgi" "$WHM_CGI_DIR/wp_temp_accounts.cgi"
-chmod 755 "$WHM_CGI_DIR/wp_temp_accounts.cgi"
+# Create index.cgi file where WHM expects it
+cat > "$WHM_CGI_DIR/index.cgi" << 'EOF'
+#!/usr/bin/perl
+
+# WHM Plugin Entry Point for WP Temporary Accounts
+# This provides the main entry point for the WHM plugin
+
+use strict;
+use warnings;
+use CGI;
+
+# Security: Ensure this runs in WHM context
+if (!$ENV{'REMOTE_USER'} && !$ENV{'WHM_USER'}) {
+    print "Content-type: text/html\n\n";
+    print "<h1>Access Denied</h1><p>This plugin must be accessed through WHM.</p>";
+    exit;
+}
+
+# Include the main plugin logic
+my $main_plugin = '/usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.pl';
+
+if (-f $main_plugin) {
+    require $main_plugin;
+    main() if defined &main;
+} else {
+    print "Content-type: text/html\n\n";
+    print "<h1>Plugin Error</h1>";
+    print "<p>Main plugin file not found at: $main_plugin</p>";
+    print "<p>Please check the installation.</p>";
+}
+EOF
+
+chmod 755 "$WHM_CGI_DIR/index.cgi"
 
 # Copy the main plugin HTML as template
 cp "$SCRIPT_DIR/cpanel_wp_temp_account.html" "$WHM_TEMPLATES_DIR/index.tmpl"

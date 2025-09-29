@@ -35,7 +35,7 @@ echo "=================================================="
 echo ""
 
 # Define WHM plugin directories
-WHM_CGI_DIR="/usr/local/cpanel/whostmgr/docroot/cgi/wp_temp_accounts"
+WHM_CGI_DIR="/usr/local/cpanel/whostmgr/docroot/cgi/addons/wp_temp_accounts"
 WHM_TEMPLATES_DIR="/usr/local/cpanel/whostmgr/docroot/templates/wp_temp_accounts"
 WHM_ADDON_DIR="/usr/local/cpanel/whostmgr/docroot/addon_plugins"
 SHARED_DIR="/usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account"
@@ -101,9 +101,21 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     done
 fi
 
-# Restart WHM services
-log_info "Restarting WHM services..."
-/scripts/restartsrv_cpsrvd 2>/dev/null || log_warning "Could not restart cpsrvd"
+# Clear WHM menu cache (prevents phantom menu items)
+log_info "Clearing WHM menu cache..."
+rm -rf /usr/local/cpanel/var/cache/whostmgr/* 2>/dev/null || true
+rm -rf /usr/local/cpanel/var/cache/template/* 2>/dev/null || true
+rm -rf /usr/local/cpanel/var/cache/locale/* 2>/dev/null || true
+rm -rf /usr/local/cpanel/var/cache/applications/* 2>/dev/null || true
+rm -rf /tmp/wd_cache_* 2>/dev/null || true
+rm -rf /var/cpanel/sessions/* 2>/dev/null || true
+
+# Restart WHM services with full cache clear
+log_info "Restarting WHM services with cache clear..."
+/scripts/restartsrv_cpsrvd --stop 2>/dev/null || true
+sleep 3
+rm -rf /usr/local/cpanel/var/cache/* 2>/dev/null || true
+/scripts/restartsrv_cpsrvd --start 2>/dev/null || log_warning "Could not restart cpsrvd"
 
 echo ""
 echo "=================================================="
@@ -118,9 +130,17 @@ echo "  • WHM templates"
 echo "  • AppConfig registration"
 echo "  • Plugin icon"
 echo "  • Cleanup cron job"
+echo "  • WHM menu cache"
+echo "  • Session cache"
 if [[ $REPLY =~ ^[Yy]$ ]]; then
 echo "  • User data and logs"
 fi
 echo ""
-echo "The plugin should no longer appear in the WHM Plugins section."
+echo "🔥 IMPORTANT: Complete the cleanup in your browser:"
+echo "   1. Close ALL WHM browser tabs"
+echo "   2. Clear browser cache (Ctrl+Shift+Delete)"
+echo "   3. Wait 60 seconds"
+echo "   4. Open fresh browser window and log into WHM"
+echo ""
+echo "The plugin will be completely gone from the WHM interface."
 echo ""
