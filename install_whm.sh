@@ -3,7 +3,7 @@
 # WHM Plugin Installation Script for WP Temporary Accounts
 # Official WHM plugin installation following cPanel documentation
 
-set -euo pipefail
+set -uo pipefail
 
 # Color output
 RED='\033[0;31m'
@@ -81,24 +81,43 @@ chown root:root "$WHM_CGI_DIR/wp_temp_accounts.cgi"
 
 log_info "✅ Created minimal CGI script"
 
-# Copy additional files if needed
+# Create templates directory and copy files if needed
+mkdir -p "$WHM_TEMPLATES_DIR/wp_temp_accounts"
+chmod 755 "$WHM_TEMPLATES_DIR/wp_temp_accounts"
+
 if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.css" ]; then
-    cp "$SCRIPT_DIR/cpanel_wp_temp_account.css" "$WHM_TEMPLATES_DIR/wp_temp_accounts/style.css"
-    chmod 644 "$WHM_TEMPLATES_DIR/wp_temp_accounts/style.css"
-    log_info "✅ Copied stylesheet"
+    if cp "$SCRIPT_DIR/cpanel_wp_temp_account.css" "$WHM_TEMPLATES_DIR/wp_temp_accounts/style.css" 2>/dev/null; then
+        chmod 644 "$WHM_TEMPLATES_DIR/wp_temp_accounts/style.css"
+        log_info "✅ Copied stylesheet"
+    else
+        log_warning "Could not copy stylesheet, but plugin will still work"
+    fi
+else
+    log_info "No stylesheet found to copy"
 fi
 
 # Copy backend logic to shared location (if needed by both cPanel and WHM)
 SHARED_DIR="/usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account"
 mkdir -p "$SHARED_DIR"
-cp "$SCRIPT_DIR/cpanel_wp_temp_account.pl" "$SHARED_DIR/cpanel_wp_temp_account.pl"
-chmod 755 "$SHARED_DIR/cpanel_wp_temp_account.pl"
+if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.pl" ]; then
+    if cp "$SCRIPT_DIR/cpanel_wp_temp_account.pl" "$SHARED_DIR/cpanel_wp_temp_account.pl" 2>/dev/null; then
+        chmod 755 "$SHARED_DIR/cpanel_wp_temp_account.pl"
+        log_info "✅ Copied backend logic"
+    else
+        log_warning "Could not copy backend logic"
+    fi
+else
+    log_info "No backend Perl script found to copy"
+fi
 
 # Copy the 48x48 PNG icon for WHM
 if [ -f "$SCRIPT_DIR/wp_temp_accounts_icon.png" ]; then
-    cp "$SCRIPT_DIR/wp_temp_accounts_icon.png" "$WHM_ADDON_DIR/wp_temp_accounts_icon.png"
-    chmod 644 "$WHM_ADDON_DIR/wp_temp_accounts_icon.png"
-    log_info "✅ Copied plugin icon (48x48 PNG)"
+    if cp "$SCRIPT_DIR/wp_temp_accounts_icon.png" "$WHM_ADDON_DIR/wp_temp_accounts_icon.png" 2>/dev/null; then
+        chmod 644 "$WHM_ADDON_DIR/wp_temp_accounts_icon.png"
+        log_info "✅ Copied plugin icon (48x48 PNG)"
+    else
+        log_warning "Could not copy icon file. Plugin will work but may not have an icon."
+    fi
 else
     log_warning "Icon file wp_temp_accounts_icon.png not found. Plugin will work but may not have an icon."
 fi
