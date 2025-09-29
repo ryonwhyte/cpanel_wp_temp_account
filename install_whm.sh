@@ -66,28 +66,15 @@ log_info "Copying plugin files to WHM directories..."
 
 # Create index.cgi file where WHM expects it
 cat > "$WHM_CGI_DIR/index.cgi" << 'EOF'
-#!/usr/bin/perl
+#!/usr/local/cpanel/3rdparty/bin/perl
 
 # WHM Plugin Entry Point for WP Temporary Accounts
 # This provides the main entry point for the WHM plugin
 
 use strict;
 use warnings;
-use CGI;
 
-# Set proper environment for WHM context
-$ENV{'SCRIPT_NAME'} = '/cgi/addons/wp_temp_accounts/index.cgi';
-$ENV{'REQUEST_URI'} = '/cgi/addons/wp_temp_accounts/index.cgi';
-
-my $cgi = CGI->new;
-
-# Security: Basic access control
-my $remote_user = $ENV{'REMOTE_USER'} || '';
-my $whm_user = $ENV{'WHM_USER'} || '';
-
-# For WHM, we don't need strict user validation like cPanel
-# WHM access is already controlled by WHM authentication
-
+# Print content type first thing
 print "Content-type: text/html\n\n";
 print <<'HTML';
 <!DOCTYPE html>
@@ -221,6 +208,7 @@ HTML
 EOF
 
 chmod 755 "$WHM_CGI_DIR/index.cgi"
+chown root:wheel "$WHM_CGI_DIR/index.cgi" 2>/dev/null || chown root:root "$WHM_CGI_DIR/index.cgi"
 
 # Copy the main plugin HTML as template
 cp "$SCRIPT_DIR/cpanel_wp_temp_account.html" "$WHM_TEMPLATES_DIR/index.tmpl"
@@ -326,13 +314,29 @@ log_info "Ensuring WHM recognizes the new plugin..."
 # Verify installation
 log_info "Verifying installation..."
 
-if [ -f "$WHM_CGI_DIR/index.cgi" ] && \
-   [ -f "/var/cpanel/apps/wp_temp_accounts.conf" ]; then
-    log_info "✅ Installation verified successfully!"
+# Check files exist
+if [ -f "$WHM_CGI_DIR/index.cgi" ] && [ -f "/var/cpanel/apps/wp_temp_accounts.conf" ]; then
+    log_info "✅ Installation files verified!"
 else
     log_error "Installation verification failed. Some files may be missing."
     exit 1
 fi
+
+# Check CGI script syntax
+log_info "Testing CGI script syntax..."
+if perl -c "$WHM_CGI_DIR/index.cgi" >/dev/null 2>&1; then
+    log_info "✅ CGI script syntax OK"
+else
+    log_error "CGI script has syntax errors"
+    perl -c "$WHM_CGI_DIR/index.cgi"
+    exit 1
+fi
+
+# Check permissions
+log_info "Verifying file permissions..."
+ls -la "$WHM_CGI_DIR/index.cgi" | while read line; do
+    log_info "  $line"
+done
 
 echo ""
 echo "=================================================="
