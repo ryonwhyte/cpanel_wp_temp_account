@@ -256,6 +256,47 @@ chown root:root "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
 
 log_info "✅ Created self-contained CGI script without Template dependencies"
 
+# Register with AppConfig (required to avoid 403 errors)
+log_info "Registering plugin with AppConfig system..."
+
+# Create AppConfig directory if it doesn't exist
+APPS_DIR="/var/cpanel/apps"
+mkdir -p "$APPS_DIR"
+chmod 755 "$APPS_DIR"
+
+# Copy AppConfig configuration file
+cp "$SCRIPT_DIR/wp_temp_accounts.conf" "/tmp/wp_temp_accounts.conf"
+
+# Register with AppConfig
+if [ -f "/usr/local/cpanel/bin/register_appconfig" ]; then
+    log_info "Registering plugin with AppConfig system..."
+    /usr/local/cpanel/bin/register_appconfig /tmp/wp_temp_accounts.conf
+    if [ $? -eq 0 ]; then
+        log_info "✅ Plugin registered with AppConfig"
+    else
+        log_error "AppConfig registration command failed"
+        exit 1
+    fi
+else
+    log_error "register_appconfig command not found"
+    exit 1
+fi
+
+# Verify registration
+if [ -f "/var/cpanel/apps/wp_temp_accounts.conf" ]; then
+    log_info "✅ AppConfig file created successfully"
+    log_info "AppConfig contents:"
+    cat "/var/cpanel/apps/wp_temp_accounts.conf" | while read line; do
+        log_info "  $line"
+    done
+else
+    log_error "AppConfig registration failed - config file not created"
+    exit 1
+fi
+
+# Clean up temporary file
+rm -f /tmp/wp_temp_accounts.conf
+
 # Copy the 48x48 PNG icon
 if [ -f "$SCRIPT_DIR/wp_temp_accounts_icon.png" ]; then
     if cp "$SCRIPT_DIR/wp_temp_accounts_icon.png" "$WHM_ADDON_DIR/wp_temp_accounts_icon.png" 2>/dev/null; then
@@ -277,7 +318,7 @@ sleep 2
 # Verify installation
 log_info "Verifying installation..."
 
-if [ -f "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi" ]; then
+if [ -f "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi" ] && [ -f "/var/cpanel/apps/wp_temp_accounts.conf" ]; then
     log_info "✅ Installation files verified!"
 else
     log_error "Installation verification failed. Some files may be missing."
@@ -307,8 +348,9 @@ echo "  • Direct: https://your-server:2087/cgi/wp_temp_accounts/wp_temp_accoun
 echo ""
 echo "📋 FILES INSTALLED:"
 echo "  • CGI Script: $WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
+echo "  • AppConfig: /var/cpanel/apps/wp_temp_accounts.conf"
 echo "  • Icon: $WHM_ADDON_DIR/wp_temp_accounts_icon.png"
 echo ""
 echo "✨ The plugin should now appear in WHM Plugins menu automatically!"
-echo "   Uses WHMADDON comment method for registration - no complex dependencies."
+echo "   Uses both WHMADDON comment and AppConfig registration for full compatibility."
 echo ""
