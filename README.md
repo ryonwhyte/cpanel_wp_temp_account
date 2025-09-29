@@ -1,6 +1,6 @@
-# WHM/cPanel WP Temporary Account Plugin
+# WP Temporary Accounts - WHM Plugin
 
-A secure cPanel/WHM plugin for creating and managing temporary WordPress administrator accounts with automatic cleanup functionality.
+A secure WHM plugin for creating and managing temporary WordPress administrator accounts with automatic cleanup functionality. **This is a WHM plugin designed for system administrators.**
 
 ## Features
 
@@ -69,48 +69,63 @@ A secure cPanel/WHM plugin for creating and managing temporary WordPress adminis
 
 ## Installation
 
-### Quick Install
+### WHM Plugin Installation (Recommended)
 
 1. Clone or download this repository to your server:
 ```bash
-git clone https://github.com/yourusername/cpanel_wp_temp_account.git
+git clone https://github.com/ryonwhyte/cpanel_wp_temp_account.git
 cd cpanel_wp_temp_account
 ```
 
-2. Run the secure installation script as root:
+2. Install as WHM plugin (as root):
 ```bash
-chmod +x install.sh
-./install.sh
+./install_whm.sh
 ```
 
-### Manual Installation
-
-1. Create the plugin directory:
+3. Create the required 48x48 PNG icon:
 ```bash
-mkdir -p /usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account
+./create_icon.sh
 ```
 
-2. Copy the secure versions of the files:
+The installer will:
+- Create WHM plugin directories
+- Register with AppConfig system
+- Copy files to correct WHM locations
+- Set up automatic cleanup via cron
+- Configure proper permissions
+
+### Access the Plugin
+
+After installation, access via:
+- **WHM Interface:** Plugins → WP Temporary Accounts
+- **Direct URL:** `https://your-server:2087/cgi/wp_temp_accounts/wp_temp_accounts.cgi`
+
+### Troubleshooting
+
+If the plugin doesn't appear in WHM:
+
+1. **Check AppConfig registration**:
 ```bash
-cp cpanel_wp_temp_account.pl /usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account/
-cp cpanel_wp_temp_account.js /usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account/
-cp cpanel_wp_temp_account.html /usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account/
-cp cpanel_wp_temp_account.css /usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account/
+cat /var/cpanel/apps/wp_temp_accounts.conf
 ```
 
-3. Set permissions:
+2. **Verify CGI file**:
 ```bash
-chmod 755 /usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.pl
-chown -R cpanel:cpanel /usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account
+ls -la /usr/local/cpanel/whostmgr/docroot/cgi/wp_temp_accounts/
+```
+
+3. **Restart cpsrvd**:
+```bash
+/scripts/restartsrv_cpsrvd
 ```
 
 ## Usage
 
 ### Accessing the Plugin
 
-After installation, users can access the plugin through:
-- **cPanel**: Navigate to Software → WP Temporary Accounts
-- **Direct URL**: `https://yourdomain.com:2083/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.html`
+After installation, system administrators can access the plugin through:
+- **WHM Interface**: Navigate to Plugins → WP Temporary Accounts
+- **Direct URL**: `https://your-server:2087/cgi/wp_temp_accounts/wp_temp_accounts.cgi`
 
 ### Creating Temporary Accounts
 
