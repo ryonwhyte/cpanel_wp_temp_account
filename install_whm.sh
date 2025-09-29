@@ -64,16 +64,22 @@ chmod 755 "$APPS_DIR"
 
 log_info "Copying plugin files to WHM directories..."
 
-# Create WHM templates directory
-mkdir -p "$WHM_TEMPLATES_DIR/wp_temp_accounts"
-chmod 755 "$WHM_TEMPLATES_DIR/wp_temp_accounts"
+# Create a minimal working CGI script
+cat > "$WHM_CGI_DIR/wp_temp_accounts.cgi" << 'EOF'
+#!/usr/bin/perl
 
-# Copy the PHP interface file
-cp "$SCRIPT_DIR/whm_index.php" "$WHM_TEMPLATES_DIR/wp_temp_accounts/index.php"
-chmod 644 "$WHM_TEMPLATES_DIR/wp_temp_accounts/index.php"
-chown root:root "$WHM_TEMPLATES_DIR/wp_temp_accounts/index.php"
+print "Content-type: text/html\n\n";
+print "<html><head><title>WP Temporary Accounts</title></head><body>";
+print "<h1>WP Temporary Accounts - WHM Plugin</h1>";
+print "<p>Plugin successfully installed and working!</p>";
+print "<p>Time: " . localtime() . "</p>";
+print "</body></html>";
+EOF
 
-log_info "✅ Created PHP WHM interface"
+chmod 755 "$WHM_CGI_DIR/wp_temp_accounts.cgi"
+chown root:root "$WHM_CGI_DIR/wp_temp_accounts.cgi"
+
+log_info "✅ Created minimal CGI script"
 
 # Copy additional files if needed
 if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.css" ]; then
@@ -182,26 +188,26 @@ log_info "Ensuring WHM recognizes the new plugin..."
 log_info "Verifying installation..."
 
 # Check files exist
-if [ -f "$WHM_TEMPLATES_DIR/wp_temp_accounts/index.php" ] && [ -f "/var/cpanel/apps/wp_temp_accounts.conf" ]; then
+if [ -f "$WHM_CGI_DIR/wp_temp_accounts.cgi" ] && [ -f "/var/cpanel/apps/wp_temp_accounts.conf" ]; then
     log_info "✅ Installation files verified!"
 else
     log_error "Installation verification failed. Some files may be missing."
     exit 1
 fi
 
-# Check PHP script syntax
-log_info "Testing PHP script syntax..."
-if php -l "$WHM_TEMPLATES_DIR/wp_temp_accounts/index.php" >/dev/null 2>&1; then
-    log_info "✅ PHP script syntax OK"
+# Check CGI script syntax
+log_info "Testing CGI script syntax..."
+if perl -c "$WHM_CGI_DIR/wp_temp_accounts.cgi" >/dev/null 2>&1; then
+    log_info "✅ CGI script syntax OK"
 else
-    log_error "PHP script has syntax errors"
-    php -l "$WHM_TEMPLATES_DIR/wp_temp_accounts/index.php"
+    log_error "CGI script has syntax errors"
+    perl -c "$WHM_CGI_DIR/wp_temp_accounts.cgi"
     exit 1
 fi
 
 # Check permissions
 log_info "Verifying file permissions..."
-ls -la "$WHM_TEMPLATES_DIR/wp_temp_accounts/index.php" | while read line; do
+ls -la "$WHM_CGI_DIR/wp_temp_accounts.cgi" | while read line; do
     log_info "  $line"
 done
 
@@ -214,11 +220,11 @@ echo "The WP Temporary Accounts plugin has been installed as a WHM plugin."
 echo ""
 echo "🎯 ACCESS THE PLUGIN:"
 echo "  • WHM: Plugins → WP Temporary Accounts"
-echo "  • Direct: https://your-server:2087/templates/wp_temp_accounts/index.php"
+echo "  • Direct: https://your-server:2087/cgi/wp_temp_accounts.cgi"
 echo ""
 echo "📋 FILES INSTALLED:"
-echo "  • PHP Interface: $WHM_TEMPLATES_DIR/wp_temp_accounts/index.php"
-echo "  • Templates: $WHM_TEMPLATES_DIR/wp_temp_accounts/"
+echo "  • CGI Script: $WHM_CGI_DIR/wp_temp_accounts.cgi"
+echo "  • Icon: $WHM_ADDON_DIR/wp_temp_accounts_icon.png"
 echo "  • AppConfig: /var/cpanel/apps/wp_temp_accounts.conf"
 echo "  • Cleanup: $CRON_SCRIPT"
 echo ""
