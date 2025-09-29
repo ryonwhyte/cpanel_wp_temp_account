@@ -64,156 +64,106 @@ chmod 755 "$APPS_DIR"
 
 log_info "Copying plugin files to WHM directories..."
 
-# Create index.cgi file where WHM expects it
+# Create a WHM plugin CGI script
 cat > "$WHM_CGI_DIR/index.cgi" << 'EOF'
-#!/usr/local/cpanel/3rdparty/bin/perl
-
-# WHM Plugin Entry Point for WP Temporary Accounts
-# This provides the main entry point for the WHM plugin
+#!/usr/bin/perl
+#WHMADDON:wp_temp_accounts:WP Temporary Accounts:wp_temp_accounts_icon.png
+#ACLS:all
 
 use strict;
 use warnings;
+use lib '/usr/local/cpanel';
+use Template;
 
-# Print content type first thing
+# Set up Template Toolkit
+my $template = Template->new({
+    INCLUDE_PATH => '/usr/local/cpanel/whostmgr/docroot/templates',
+    WRAPPER => 'master_templates/master.tmpl',
+});
+
+# Print content type
 print "Content-type: text/html\n\n";
-print <<'HTML';
+
+# Template variables
+my $vars = {
+    breadcrumbdata => [
+        { text => 'Home', url => '/' },
+        { text => 'Plugins', url => '/scripts2/manage_plugins' },
+        { text => 'WP Temporary Accounts' }
+    ],
+    page_title => 'WP Temporary Accounts',
+    stylesheets => ['/templates/wp_temp_accounts/style.css'],
+    content => <<'END_CONTENT',
+<div class="section">
+    <h1>🔧 WP Temporary Accounts</h1>
+    <p>WordPress Administrator Account Management</p>
+
+    <div class="callout callout-info">
+        <h4>✅ WHM Plugin Successfully Installed</h4>
+        <p>The plugin is properly registered and accessible through WHM.</p>
+    </div>
+
+    <div class="body-content">
+        <h2>📋 Plugin Information</h2>
+        <p>This WHM plugin provides system administrators with oversight of the WP Temporary Accounts functionality.</p>
+
+        <h3>🎯 How Users Access the Plugin</h3>
+        <ul>
+            <li><strong>cPanel Users:</strong> Log into cPanel and look for "WP Temporary Accounts" in the Software section</li>
+            <li><strong>Direct Access:</strong> Each user can access via their cPanel interface</li>
+        </ul>
+
+        <h3>🔧 Administrative Features</h3>
+        <ul>
+            <li>Monitor plugin usage across all accounts</li>
+            <li>Review cleanup logs and account statistics</li>
+            <li>Manage installation and updates</li>
+        </ul>
+
+        <h3>📊 System Status</h3>
+        <ul>
+            <li>✅ WHM Registration: Active</li>
+            <li>✅ cPanel Integration: Available</li>
+            <li>✅ Cleanup Cron Job: Scheduled</li>
+        </ul>
+    </div>
+
+    <div class="form-actions">
+        <a href="/scripts2/manage_plugins" class="btn btn-primary">← Back to Plugins</a>
+        <a href="https://github.com/ryonwhyte/cpanel_wp_temp_account" class="btn btn-default">📖 Documentation</a>
+    </div>
+</div>
+END_CONTENT
+};
+
+# Process the template
+$template->process('wp_temp_accounts/index.tmpl', $vars) || do {
+    # Fallback if template fails
+    print <<'FALLBACK_HTML';
 <!DOCTYPE html>
 <html>
-<head>
-    <title>WP Temporary Accounts - WHM Plugin</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #eee;
-        }
-        .header h1 {
-            color: #333;
-            margin: 0;
-        }
-        .status {
-            background: #e7f3ff;
-            border: 1px solid #bee5eb;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        .btn {
-            background: #007cba;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin: 5px;
-        }
-        .btn:hover {
-            background: #005a87;
-        }
-        .info-box {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-    </style>
-</head>
+<head><title>WP Temporary Accounts</title></head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔧 WP Temporary Accounts</h1>
-            <p>WordPress Administrator Account Management</p>
-        </div>
-
-        <div class="status">
-            <strong>✅ WHM Plugin Successfully Installed</strong><br>
-            The plugin is properly registered and accessible through WHM.
-        </div>
-
-        <div class="info-box">
-            <h3>📋 Next Steps</h3>
-            <p>To complete the setup and start using the plugin:</p>
-            <ol>
-                <li><strong>Access via cPanel:</strong> The full plugin interface is available in individual cPanel accounts</li>
-                <li><strong>User Access:</strong> Each cPanel user can create temporary WordPress accounts for their domains</li>
-                <li><strong>Management:</strong> Users can manage their temporary accounts through their cPanel interface</li>
-            </ol>
-        </div>
-
-        <div class="info-box">
-            <h3>🎯 How to Access the Full Plugin</h3>
-            <p><strong>For cPanel Users:</strong></p>
-            <ul>
-                <li>Log into cPanel for the domain</li>
-                <li>Look for "WP Temporary Accounts" in the Software section</li>
-                <li>Or access directly: <code>https://domain:2083/cgi-bin/cpanel_wp_temp_account.pl</code></li>
-            </ul>
-        </div>
-
-        <div class="info-box">
-            <h3>🔧 Administrative Features</h3>
-            <p><strong>As WHM Administrator, you can:</strong></p>
-            <ul>
-                <li>Monitor plugin usage across all accounts</li>
-                <li>Configure global settings and security policies</li>
-                <li>Review cleanup logs and account statistics</li>
-                <li>Manage installation and updates</li>
-            </ul>
-        </div>
-
-        <div class="info-box">
-            <h3>📊 System Status</h3>
-            <p><strong>Plugin Components:</strong></p>
-            <ul>
-                <li>✅ WHM Registration: Active</li>
-                <li>✅ cPanel Integration: Available</li>
-                <li>✅ Cleanup Cron Job: Scheduled</li>
-                <li>✅ File Permissions: Secure</li>
-            </ul>
-        </div>
-
-        <p style="text-align: center; margin-top: 30px;">
-            <a href="/scripts2/manage_plugins" class="btn">← Back to Plugins</a>
-            <a href="https://github.com/ryonwhyte/cpanel_wp_temp_account" class="btn">📖 Documentation</a>
-        </p>
-
-        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 12px;">
-            WP Temporary Accounts v3.0 | WHM Plugin Interface
-        </div>
-    </div>
+<h1>WP Temporary Accounts - WHM Plugin</h1>
+<p>Plugin installed successfully. Template system not available - using fallback display.</p>
+<p><a href="/scripts2/manage_plugins">← Back to Plugins</a></p>
 </body>
 </html>
-HTML
-
+FALLBACK_HTML
+};
 EOF
 
 chmod 755 "$WHM_CGI_DIR/index.cgi"
 chown root:wheel "$WHM_CGI_DIR/index.cgi" 2>/dev/null || chown root:root "$WHM_CGI_DIR/index.cgi"
 
-# Copy the main plugin HTML as template
-cp "$SCRIPT_DIR/cpanel_wp_temp_account.html" "$WHM_TEMPLATES_DIR/index.tmpl"
+# Create WHM template files
+cat > "$WHM_TEMPLATES_DIR/index.tmpl" << 'EOF'
+[% content %]
+EOF
+
+# Copy stylesheet for WHM templates
 cp "$SCRIPT_DIR/cpanel_wp_temp_account.css" "$WHM_TEMPLATES_DIR/style.css"
-cp "$SCRIPT_DIR/cpanel_wp_temp_account.js" "$WHM_TEMPLATES_DIR/script.js"
+chmod 644 "$WHM_TEMPLATES_DIR/index.tmpl" "$WHM_TEMPLATES_DIR/style.css"
 
 # Copy backend logic to shared location (if needed by both cPanel and WHM)
 SHARED_DIR="/usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account"
@@ -221,13 +171,13 @@ mkdir -p "$SHARED_DIR"
 cp "$SCRIPT_DIR/cpanel_wp_temp_account.pl" "$SHARED_DIR/cpanel_wp_temp_account.pl"
 chmod 755 "$SHARED_DIR/cpanel_wp_temp_account.pl"
 
-# Create 48x48 PNG icon for WHM (convert from SVG if needed)
-if [ -f "$SCRIPT_DIR/icon.svg" ]; then
-    # For now, we'll create a simple text-based approach since we don't have ImageMagick
-    log_warning "SVG icon found, but conversion to PNG requires ImageMagick"
-    log_info "You may need to manually create a 48x48 PNG icon at $WHM_ADDON_DIR/wp_temp_accounts_icon.png"
+# Copy the 48x48 PNG icon for WHM
+if [ -f "$SCRIPT_DIR/wp_temp_accounts_icon.png" ]; then
+    cp "$SCRIPT_DIR/wp_temp_accounts_icon.png" "$WHM_ADDON_DIR/wp_temp_accounts_icon.png"
+    chmod 644 "$WHM_ADDON_DIR/wp_temp_accounts_icon.png"
+    log_info "✅ Copied plugin icon (48x48 PNG)"
 else
-    log_warning "No icon found. You should create a 48x48 PNG icon at $WHM_ADDON_DIR/wp_temp_accounts_icon.png"
+    log_warning "Icon file wp_temp_accounts_icon.png not found. Plugin will work but may not have an icon."
 fi
 
 log_info "Registering plugin with AppConfig system..."
