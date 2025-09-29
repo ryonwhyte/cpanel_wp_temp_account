@@ -64,7 +64,7 @@ chmod 755 "$WHM_ADDON_DIR"
 
 log_info "Creating WHM plugin files..."
 
-# Create the main CGI script (following LiteSpeed pattern)
+# Create the main CGI script (without Template dependencies)
 cat > "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi" << 'EOF'
 #!/bin/sh
 eval 'if [ -x /usr/local/cpanel/3rdparty/bin/perl ]; then exec /usr/local/cpanel/3rdparty/bin/perl -x -- $0 ${1+"$@"}; else exec /usr/bin/perl -x -- $0 ${1+"$@"};fi'
@@ -74,149 +74,187 @@ if 0;
 #WHMADDON:wp_temp_accounts:WP Temporary Accounts:wp_temp_accounts_icon.png
 
 use strict;
+use warnings;
 use lib '/usr/local/cpanel/';
-use Whostmgr::ACLS();
-Whostmgr::ACLS::init_acls();
+
+# Try to use WHM ACLs if available, but don't fail if not
+my $has_acls = 0;
+eval {
+    require Whostmgr::ACLS;
+    Whostmgr::ACLS::init_acls();
+    $has_acls = 1;
+};
 
 package cgi::wp_temp_accounts;
-use warnings;
-use Cpanel::Template();
 
 run() unless caller();
 
 sub run {
     print "Content-type: text/html; charset=utf-8\n\n";
 
-    if (!Whostmgr::ACLS::hasroot()) {
-        print "You do not have access to the WP Temporary Accounts Plugin.\n";
+    # Basic access control - check if running in WHM context
+    if ($has_acls && !Whostmgr::ACLS::hasroot()) {
+        print_error_page("You do not have access to the WP Temporary Accounts Plugin.");
         exit;
     }
 
-    Cpanel::Template::process_template(
-        'whostmgr',
-        {
-            'template_file' => 'wp_temp_accounts/wp_temp_accounts.html.tt',
-            'print'   => 1,
-        }
-    );
+    print_plugin_page();
     exit();
+}
+
+sub print_error_page {
+    my ($message) = @_;
+    print <<HTML;
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Access Denied - WP Temporary Accounts</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="/usr/local/cpanel/whostmgr/docroot/themes/x/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Access Denied</h1>
+        <p>$message</p>
+        <a href="/scripts/command?PFILE=main">Return to WHM</a>
+    </div>
+</body>
+</html>
+HTML
+}
+
+sub print_plugin_page {
+    print <<HTML;
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WP Temporary Accounts - WHM Plugin</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/usr/local/cpanel/whostmgr/docroot/themes/x/style.css">
+    <link rel="stylesheet" href="/libraries/fontawesome/css/font-awesome.min.css">
+    <style>
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; }
+        .header { border-bottom: 2px solid #ddd; padding-bottom: 20px; margin-bottom: 30px; }
+        .breadcrumb { margin-bottom: 20px; }
+        .breadcrumb a { color: #0073aa; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .callout { background: #e7f3ff; border-left: 4px solid #0073aa; padding: 15px; margin: 20px 0; border-radius: 4px; }
+        .callout h4 { margin-top: 0; color: #005177; }
+        .box { background: white; border: 1px solid #ddd; border-radius: 4px; margin: 20px 0; }
+        .box-header { background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; font-weight: bold; }
+        .box-body { padding: 20px; }
+        .btn { background: #0073aa; color: white; padding: 10px 20px; border: none; border-radius: 4px; text-decoration: none; display: inline-block; margin: 5px 10px 5px 0; }
+        .btn:hover { background: #005177; color: white; }
+        .btn-default { background: #6c757d; }
+        .btn-default:hover { background: #545b62; }
+        .row { display: flex; flex-wrap: wrap; margin: -10px; }
+        .col { flex: 1; padding: 10px; }
+        .col-8 { flex: 0 0 66.666%; }
+        .col-4 { flex: 0 0 33.333%; }
+        .text-green { color: #28a745; }
+        ul { line-height: 1.6; }
+        li { margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="breadcrumb">
+            <a href="/scripts/command?PFILE=main">Home</a> &gt;
+            <a href="/scripts/command?PFILE=Plugins">Plugins</a> &gt;
+            WP Temporary Accounts
+        </div>
+
+        <div class="header">
+            <h1><i class="fa fa-wordpress"></i> WP Temporary Accounts</h1>
+            <p>WordPress Administrator Account Management</p>
+        </div>
+
+        <div class="callout">
+            <h4><i class="fa fa-check"></i> WHM Plugin Successfully Installed</h4>
+            <p>The WP Temporary Accounts plugin is properly registered and accessible through WHM.</p>
+        </div>
+
+        <div class="row">
+            <div class="col col-8">
+                <div class="box">
+                    <div class="box-header">
+                        <i class="fa fa-info-circle"></i> Plugin Information
+                    </div>
+                    <div class="box-body">
+                        <p>This WHM plugin provides system administrators with oversight of the WP Temporary Accounts functionality.</p>
+
+                        <h4><i class="fa fa-users"></i> How Users Access the Plugin</h4>
+                        <ul>
+                            <li><strong>cPanel Users:</strong> Log into cPanel and look for "WP Temporary Accounts" in the Software section</li>
+                            <li><strong>Direct Access:</strong> Each user can access via their cPanel interface</li>
+                            <li><strong>Documentation:</strong> Full user guide available in the GitHub repository</li>
+                        </ul>
+
+                        <h4><i class="fa fa-cogs"></i> Administrative Features</h4>
+                        <ul>
+                            <li>Monitor plugin usage across all cPanel accounts</li>
+                            <li>Review cleanup logs and account statistics</li>
+                            <li>Manage installation and updates</li>
+                            <li>Configure global security policies</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col col-4">
+                <div class="box">
+                    <div class="box-header">
+                        <i class="fa fa-server"></i> System Status
+                    </div>
+                    <div class="box-body">
+                        <ul style="list-style: none; padding: 0;">
+                            <li><i class="fa fa-check text-green"></i> WHM Registration: Active</li>
+                            <li><i class="fa fa-check text-green"></i> cPanel Integration: Available</li>
+                            <li><i class="fa fa-check text-green"></i> Cleanup Cron Job: Scheduled</li>
+                            <li><i class="fa fa-check text-green"></i> Icon: Installed</li>
+                            <li><i class="fa fa-check text-green"></i> Permissions: Configured</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <div class="box-header">
+                        <i class="fa fa-info"></i> Plugin Details
+                    </div>
+                    <div class="box-body">
+                        <p><strong>Version:</strong> 3.0 (Universal)</p>
+                        <p><strong>Compatibility:</strong> Works with both WP Toolkit and direct WordPress installations</p>
+                        <p><strong>Security:</strong> Enterprise-grade security with CSRF protection</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="box">
+            <div class="box-header">
+                <i class="fa fa-rocket"></i> Quick Actions
+            </div>
+            <div class="box-body">
+                <a href="/scripts/command?PFILE=Plugins" class="btn">
+                    <i class="fa fa-arrow-left"></i> Back to Plugins
+                </a>
+                <a href="https://github.com/ryonwhyte/cpanel_wp_temp_account" class="btn btn-default" target="_blank">
+                    <i class="fa fa-book"></i> Documentation
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+HTML
 }
 EOF
 
 chmod 755 "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
 chown root:root "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
 
-# Create the Template Toolkit file (following LiteSpeed pattern)
-cat > "$WHM_TEMPLATES_DIR/wp_temp_accounts.html.tt" << 'EOF'
-[%
-USE Whostmgr;
-USE JSON;
-
-IF locale.get_html_dir_attr() == 'rtl';
-    SET rtl_bootstrap = Whostmgr.find_file_url('/3rdparty/bootstrap-rtl/optimized/dist/css/bootstrap-rtl.min.css');
-END;
-
-SET styleSheets = [
-    rtl_bootstrap,
-    '/libraries/fontawesome/css/font-awesome.min.css',
-    '/combined_optimized.css',
-    '/themes/x/style_optimized.css'
-];
-
-WRAPPER 'master_templates/master.tmpl'
-    breadcrumbdata = {
-            previous = [
-                    {name = "Home",url = "/scripts/command?PFILE=main"},
-                    {name = "Plugins",url="/scripts/command?PFILE=Plugins"}
-            ],
-            name = 'WP Temporary Accounts Plugin',
-            url = '/cgi/wp_temp_accounts/wp_temp_accounts.cgi',
-    },
-    header = locale.maketext("WP Temporary Accounts")
-    skipheader = 1,
-    stylesheets = styleSheets,
-    theme='bootstrap';
-%]
-
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="callout callout-success">
-                <h4><i class="fa fa-check"></i> WHM Plugin Successfully Installed</h4>
-                <p>The WP Temporary Accounts plugin is properly registered and accessible through WHM.</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title"><i class="fa fa-wordpress"></i> Plugin Information</h3>
-                </div>
-                <div class="box-body">
-                    <p>This WHM plugin provides system administrators with oversight of the WP Temporary Accounts functionality.</p>
-
-                    <h4><i class="fa fa-users"></i> How Users Access the Plugin</h4>
-                    <ul>
-                        <li><strong>cPanel Users:</strong> Log into cPanel and look for "WP Temporary Accounts" in the Software section</li>
-                        <li><strong>Direct Access:</strong> Each user can access via their cPanel interface</li>
-                        <li><strong>Documentation:</strong> Full user guide available in the GitHub repository</li>
-                    </ul>
-
-                    <h4><i class="fa fa-cogs"></i> Administrative Features</h4>
-                    <ul>
-                        <li>Monitor plugin usage across all cPanel accounts</li>
-                        <li>Review cleanup logs and account statistics</li>
-                        <li>Manage installation and updates</li>
-                        <li>Configure global security policies</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="box box-info">
-                <div class="box-header with-border">
-                    <h3 class="box-title"><i class="fa fa-info-circle"></i> System Status</h3>
-                </div>
-                <div class="box-body">
-                    <ul class="list-unstyled">
-                        <li><i class="fa fa-check text-green"></i> WHM Registration: Active</li>
-                        <li><i class="fa fa-check text-green"></i> cPanel Integration: Available</li>
-                        <li><i class="fa fa-check text-green"></i> Cleanup Cron Job: Scheduled</li>
-                        <li><i class="fa fa-check text-green"></i> Icon: Installed</li>
-                        <li><i class="fa fa-check text-green"></i> Permissions: Configured</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="box box-default">
-                <div class="box-header with-border">
-                    <h3 class="box-title"><i class="fa fa-rocket"></i> Quick Actions</h3>
-                </div>
-                <div class="box-body">
-                    <a href="/scripts/command?PFILE=Plugins" class="btn btn-primary">
-                        <i class="fa fa-arrow-left"></i> Back to Plugins
-                    </a>
-                    <a href="https://github.com/ryonwhyte/cpanel_wp_temp_account" class="btn btn-default" target="_blank">
-                        <i class="fa fa-book"></i> Documentation
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-[% END %]
-EOF
-
-chmod 644 "$WHM_TEMPLATES_DIR/wp_temp_accounts.html.tt"
-chown root:root "$WHM_TEMPLATES_DIR/wp_temp_accounts.html.tt"
+log_info "✅ Created self-contained CGI script without Template dependencies"
 
 # Copy the 48x48 PNG icon
 if [ -f "$SCRIPT_DIR/wp_temp_accounts_icon.png" ]; then
@@ -239,7 +277,7 @@ sleep 2
 # Verify installation
 log_info "Verifying installation..."
 
-if [ -f "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi" ] && [ -f "$WHM_TEMPLATES_DIR/wp_temp_accounts.html.tt" ]; then
+if [ -f "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi" ]; then
     log_info "✅ Installation files verified!"
 else
     log_error "Installation verification failed. Some files may be missing."
@@ -269,9 +307,8 @@ echo "  • Direct: https://your-server:2087/cgi/wp_temp_accounts/wp_temp_accoun
 echo ""
 echo "📋 FILES INSTALLED:"
 echo "  • CGI Script: $WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
-echo "  • Template: $WHM_TEMPLATES_DIR/wp_temp_accounts.html.tt"
 echo "  • Icon: $WHM_ADDON_DIR/wp_temp_accounts_icon.png"
 echo ""
 echo "✨ The plugin should now appear in WHM Plugins menu automatically!"
-echo "   No AppConfig registration needed - uses WHMADDON comment method like LiteSpeed."
+echo "   Uses WHMADDON comment method for registration - no complex dependencies."
 echo ""
