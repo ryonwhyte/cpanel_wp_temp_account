@@ -965,6 +965,14 @@ sub call_wp_toolkit_api {
     my ($function, $params) = @_;
     $params ||= {};
 
+    # IMPORTANT: in WHM you MUST specify a cPanel username to act as
+    my $cpuser = $cgi->param('cpuser') || $cgi->param('cpanel_user') || $user;
+    if ($is_whm && (!$cpuser || $cpuser eq 'root' || $cpuser eq 'unknown')) {
+        # Bail early with a clear message so you don't silently hit 'root'
+        print_error("Missing cPanel user for WP Toolkit call. Please select a cPanel account.");
+        return;
+    }
+
     # Build API URL based on environment
     my $api_url;
     if ($is_whm) {
@@ -980,8 +988,9 @@ sub call_wp_toolkit_api {
         %$params
     );
 
-    # Add security token for WHM
+    # Add cpanel_jsonapi_user for WHM context
     if ($is_whm) {
+        $post_data{'cpanel_jsonapi_user'} = $cpuser;
         $post_data{'cpanelOrWhmSecurityToken'} = $session_token;
     }
 
@@ -990,6 +999,11 @@ sub call_wp_toolkit_api {
         ssl_opts => { verify_hostname => 0 },
         timeout => 30
     );
+
+    # Forward session cookies so the token ties to the same WHM session
+    if ($ENV{'HTTP_COOKIE'}) {
+        $ua->default_header('Cookie' => $ENV{'HTTP_COOKIE'});
+    }
 
     my $response = $ua->post($api_url, \%post_data);
 

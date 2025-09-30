@@ -312,6 +312,45 @@ chown root:root "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
 
 log_info "✅ Created self-contained CGI script without Template dependencies"
 
+# Copy main plugin files to WHM plugin directory
+log_info "Copying plugin files to WHM directory..."
+
+if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.pl" ]; then
+    cp "$SCRIPT_DIR/cpanel_wp_temp_account.pl" "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.pl"
+    chmod 755 "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.pl"
+    chown root:root "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.pl"
+    log_info "✅ Copied cpanel_wp_temp_account.pl"
+fi
+
+if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.html" ]; then
+    cp "$SCRIPT_DIR/cpanel_wp_temp_account.html" "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.html"
+    chmod 644 "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.html"
+    chown root:root "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.html"
+    log_info "✅ Copied cpanel_wp_temp_account.html"
+fi
+
+if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.js" ]; then
+    cp "$SCRIPT_DIR/cpanel_wp_temp_account.js" "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.js"
+    chmod 644 "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.js"
+    chown root:root "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.js"
+    log_info "✅ Copied cpanel_wp_temp_account.js"
+fi
+
+if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.css" ]; then
+    cp "$SCRIPT_DIR/cpanel_wp_temp_account.css" "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.css"
+    chmod 644 "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.css"
+    chown root:root "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.css"
+    log_info "✅ Copied cpanel_wp_temp_account.css"
+fi
+
+# Create index.cgi wrapper that serves the HTML
+if [ -f "$SCRIPT_DIR/index.cgi" ]; then
+    cp "$SCRIPT_DIR/index.cgi" "$WHM_PLUGIN_DIR/index.cgi"
+    chmod 755 "$WHM_PLUGIN_DIR/index.cgi"
+    chown root:root "$WHM_PLUGIN_DIR/index.cgi"
+    log_info "✅ Created index.cgi entry point"
+fi
+
 # Register with AppConfig (required to avoid 403 errors)
 log_info "Registering plugin with AppConfig system..."
 
@@ -324,9 +363,9 @@ chmod 755 "$APPS_DIR"
 cat > "/tmp/wp_temp_accounts.conf" << 'EOF'
 name=wp_temp_accounts
 service=whostmgr
-url=/cgi/wp_temp_accounts/wp_temp_accounts.cgi
-entryurl=wp_temp_accounts/wp_temp_accounts.cgi
-acls=all
+url=/cgi/wp_temp_accounts/index.cgi
+entryurl=wp_temp_accounts/index.cgi
+acls=any
 displayname=WP Temporary Accounts
 icon=wp_temp_accounts_icon.png
 target=_self
@@ -391,6 +430,45 @@ else
     exit 1
 fi
 
+# Verify Perl interpreter and permissions
+log_info "Verifying Perl interpreter and file permissions..."
+
+# Check main Perl script
+if [ -f "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.pl" ]; then
+    PERL_SHEBANG=$(head -n1 "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.pl")
+    if [[ "$PERL_SHEBANG" == *"/usr/local/cpanel/3rdparty/bin/perl"* ]]; then
+        log_info "✅ Correct Perl interpreter in cpanel_wp_temp_account.pl"
+    else
+        log_warning "Perl shebang may be incorrect: $PERL_SHEBANG"
+    fi
+
+    # Check syntax
+    if /usr/local/cpanel/3rdparty/bin/perl -c "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.pl" >/dev/null 2>&1; then
+        log_info "✅ cpanel_wp_temp_account.pl syntax OK"
+    else
+        log_error "Perl syntax errors in cpanel_wp_temp_account.pl:"
+        /usr/local/cpanel/3rdparty/bin/perl -c "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.pl"
+    fi
+
+    # Check permissions
+    PERMS=$(stat -c '%a' "$WHM_PLUGIN_DIR/cpanel_wp_temp_account.pl")
+    if [ "$PERMS" = "755" ]; then
+        log_info "✅ Correct permissions (755) on cpanel_wp_temp_account.pl"
+    else
+        log_warning "Unexpected permissions ($PERMS) on cpanel_wp_temp_account.pl"
+    fi
+fi
+
+# Check index.cgi
+if [ -f "$WHM_PLUGIN_DIR/index.cgi" ]; then
+    PERMS=$(stat -c '%a' "$WHM_PLUGIN_DIR/index.cgi")
+    if [ "$PERMS" = "755" ]; then
+        log_info "✅ Correct permissions (755) on index.cgi"
+    else
+        log_warning "Unexpected permissions ($PERMS) on index.cgi"
+    fi
+fi
+
 # Check CGI script syntax
 log_info "Testing CGI script syntax..."
 if perl -c "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi" >/dev/null 2>&1; then
@@ -409,31 +487,39 @@ CPANEL_PLUGIN_DIR="/usr/local/cpanel/base/3rdparty/wp_temp_accounts"
 mkdir -p "$CPANEL_PLUGIN_DIR"
 chmod 755 "$CPANEL_PLUGIN_DIR"
 
-# Create a simple wrapper script that redirects to the existing functionality
-cat > "$CPANEL_PLUGIN_DIR/index.cgi" << 'EOF'
-#!/usr/bin/perl
+# Copy all plugin files to cPanel 3rdparty directory
+log_info "Copying plugin files to cPanel directory..."
 
-use strict;
-use warnings;
+if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.pl" ]; then
+    cp "$SCRIPT_DIR/cpanel_wp_temp_account.pl" "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.pl"
+    chmod 755 "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.pl"
+    chown root:root "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.pl"
+fi
 
-print "Content-type: text/html\n\n";
-print <<HTML;
-<!DOCTYPE html>
-<html>
-<head>
-    <title>WP Temporary Accounts</title>
-    <meta charset="utf-8">
-    <meta http-equiv="refresh" content="0;url=/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.html">
-</head>
-<body>
-    <p>Redirecting to WP Temporary Accounts...</p>
-</body>
-</html>
-HTML
-EOF
+if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.html" ]; then
+    cp "$SCRIPT_DIR/cpanel_wp_temp_account.html" "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.html"
+    chmod 644 "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.html"
+    chown root:root "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.html"
+fi
 
-chmod 755 "$CPANEL_PLUGIN_DIR/index.cgi"
-chown root:root "$CPANEL_PLUGIN_DIR/index.cgi"
+if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.js" ]; then
+    cp "$SCRIPT_DIR/cpanel_wp_temp_account.js" "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.js"
+    chmod 644 "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.js"
+    chown root:root "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.js"
+fi
+
+if [ -f "$SCRIPT_DIR/cpanel_wp_temp_account.css" ]; then
+    cp "$SCRIPT_DIR/cpanel_wp_temp_account.css" "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.css"
+    chmod 644 "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.css"
+    chown root:root "$CPANEL_PLUGIN_DIR/cpanel_wp_temp_account.css"
+fi
+
+# Create index.cgi wrapper for cPanel
+if [ -f "$SCRIPT_DIR/index.cgi" ]; then
+    cp "$SCRIPT_DIR/index.cgi" "$CPANEL_PLUGIN_DIR/index.cgi"
+    chmod 755 "$CPANEL_PLUGIN_DIR/index.cgi"
+    chown root:root "$CPANEL_PLUGIN_DIR/index.cgi"
+fi
 
 # Register cPanel AppConfig
 if [ -f "$SCRIPT_DIR/wp_temp_accounts_cpanel.conf" ]; then
