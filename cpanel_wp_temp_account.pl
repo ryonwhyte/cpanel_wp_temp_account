@@ -22,6 +22,8 @@ use DBI;
 use File::Find;
 use File::Basename;
 
+# Main execution function - only runs when script is invoked directly
+sub main {
 # Initialize
 my $cgi = CGI->new();
 my $logger = Cpanel::Logger->new();
@@ -157,6 +159,12 @@ if ($action eq 'get_csrf_token') {
 } elsif ($action eq 'get_system_health') {
     my $overview = get_system_health_overview();
     print_success($overview);
+}
+}  # End of main()
+
+# Only run main() when executed directly, not when required
+unless (caller) {
+    main();
 }
 
 # Functions
@@ -1912,3 +1920,5 @@ END {
         };
     }
 }
+
+1;  # Return true value if required as a module

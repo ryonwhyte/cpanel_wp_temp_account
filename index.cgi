@@ -1,20 +1,16 @@
 #!/usr/local/cpanel/3rdparty/bin/perl
-
-# WHM Plugin Entry Point for WP Temporary Accounts
-# Serves the main HTML interface
-
 use strict;
 use warnings;
 
+# Never load your .pl here; just return static HTML.
 print "Content-Type: text/html; charset=utf-8\n\n";
 
-# Serve the HTML interface
-open my $fh, '<', 'cpanel_wp_temp_account.html' or do {
-    print "<h1>Error: Missing cpanel_wp_temp_account.html</h1>";
-    print "<p>The plugin interface file could not be found.</p>";
-    exit;
-};
-
-local $/;
-print <$fh>;
-close $fh;
+# Serve the HTML file as-is so JS can make AJAX calls to the .pl
+my $file = 'cpanel_wp_temp_account.html';
+if (open my $fh, '<', $file) {
+    local $/;
+    print <$fh>;
+    close $fh;
+} else {
+    print "<h1>WP Temporary Accounts</h1><p>Missing $file in the same directory.</p>";
+}

@@ -3,6 +3,15 @@
 // Global CSRF token
 let csrfToken = null;
 
+// Helper function to add cpuser parameter for WHM context
+function addCpuserParam(data) {
+    const cpuserEl = document.getElementById('cpuser');
+    if (cpuserEl && cpuserEl.value) {
+        data.cpuser = cpuserEl.value;
+    }
+    return data;
+}
+
 $(document).ready(function() {
     // Initialize CSRF token
     getCSRFToken().then(() => {
@@ -88,7 +97,7 @@ function getCSRFToken() {
     return $.ajax({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: { action: 'get_csrf_token' },
+        data: addCpuserParam({ action: 'get_csrf_token' }),
         dataType: 'json'
     }).done(function(response) {
         if (response.success && response.data.csrf_token) {
@@ -114,7 +123,7 @@ function loadSystemInfo() {
     $.ajax({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: { action: 'get_system_info' },
+        data: addCpuserParam({ action: 'get_system_info' }),
         dataType: 'json',
         success: function(response) {
             if (response.success) {
@@ -150,7 +159,7 @@ function loadDashboard(silent = false) {
     $.ajax({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: { action: 'get_statistics' },
+        data: addCpuserParam({ action: 'get_statistics' }),
         dataType: 'json',
         success: function(response) {
             if (response.success) {
@@ -167,7 +176,7 @@ function loadDashboard(silent = false) {
     $.ajax({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: { action: 'get_alerts' },
+        data: addCpuserParam({ action: 'get_alerts' }),
         dataType: 'json',
         success: function(response) {
             if (response.success) {
@@ -318,10 +327,10 @@ function loadRecentActivity(silent = false) {
     $.ajax({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: {
+        data: addCpuserParam({
             action: 'get_activity',
             limit: 20
-        },
+        }),
         dataType: 'json',
         success: function(response) {
             if (response.success) {
@@ -541,7 +550,7 @@ function loadWordPressSites() {
     $.ajax({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: { action: 'get_wp_sites' },
+        data: addCpuserParam({ action: 'get_wp_sites' }),
         dataType: 'json',
         success: function(response) {
             hideLoading();
@@ -625,11 +634,11 @@ function createTempAccount() {
     ajaxWithCSRF({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: {
+        data: addCpuserParam({
             action: 'create_temp_account',
             domain: domain,
             hours: hoursInt
-        },
+        }),
         dataType: 'json',
         success: function(response) {
             hideLoading();
@@ -737,7 +746,7 @@ function loadActiveAccounts(silent = false) {
     $.ajax({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: { action: 'list_temp_accounts' },
+        data: addCpuserParam({ action: 'list_temp_accounts' }),
         dataType: 'json',
         success: function(response) {
             if (!silent) hideLoading();
@@ -886,7 +895,7 @@ function cleanupExpiredAccounts() {
     ajaxWithCSRF({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: { action: 'cleanup_expired' },
+        data: addCpuserParam({ action: 'cleanup_expired' }),
         dataType: 'json',
         success: function(response) {
             hideLoading();
@@ -924,11 +933,11 @@ function deleteAccount(domain, username) {
     ajaxWithCSRF({
         url: 'cpanel_wp_temp_account.pl',
         method: 'POST',
-        data: {
+        data: addCpuserParam({
             action: 'delete_account',
             domain: domain,
             username: username
-        },
+        }),
         dataType: 'json',
         success: function(response) {
             hideLoading();
