@@ -49,6 +49,49 @@ my $session_token = get_session_token();
 # Load configuration
 my $config = load_config();
 
+# Handle user impersonation for WHM context
+my $target_user = $cgi->param('cpanel_user') || $user;
+my $original_user = $user;
+my $impersonation_active = 0;
+
+# If running in WHM context (as root) and a target user is specified
+if ($is_whm && $original_user eq 'root' && $target_user ne 'root' && $target_user ne 'unknown') {
+    eval {
+        require Cpanel::PwCache;
+        require Cpanel::AccessIds;
+
+        my $pw = Cpanel::PwCache::getpwnam($target_user);
+        if ($pw) {
+            # Temporarily switch to target user context
+            Cpanel::AccessIds::pushuids($pw->get_uid, $pw->get_gid);
+            $impersonation_active = 1;
+
+            # Update environment variables for impersonated user
+            $user = $target_user;
+            $homedir = $pw->get_dir || "/home/$target_user";
+            $config_dir = "$homedir/.wp_temp_accounts";
+            $log_file = "$config_dir/accounts.log";
+            $config_file = "$config_dir/config.json";
+            $activity_log = "$config_dir/activity.log";
+            $rate_limit_file = "$config_dir/rate_limits.json";
+            $alerts_file = "$config_dir/alerts.json";
+            $stats_file = "$config_dir/statistics.json";
+            $wp_sites_cache = "$config_dir/wp_sites_cache.json";
+
+            # Create config directory for impersonated user if needed
+            make_path($config_dir) unless -d $config_dir;
+            chmod 0700, $config_dir;
+
+            # Reload configuration for the impersonated user
+            $config = load_config();
+        }
+    };
+    if ($@) {
+        # If impersonation fails, continue as root but log the issue
+        log_activity("Failed to impersonate user '$target_user': $@", "WARNING");
+    }
+}
+
 # CSRF Protection
 my $csrf_token = $cgi->param('csrf_token') || '';
 my $action = $cgi->param('action') || '';
@@ -1844,4 +1887,14 @@ sub print_error {
     my ($message) = @_;
     print encode_json({ 'success' => JSON::PP::false, 'error' => sanitize_input($message) });
     $logger->warn("WP Temp Accounts Error: $message");
+}
+
+# Cleanup: Restore original user context if impersonation was active
+END {
+    if ($impersonation_active) {
+        eval {
+            require Cpanel::AccessIds;
+            Cpanel::AccessIds::popuids();
+        };
+    }
 }

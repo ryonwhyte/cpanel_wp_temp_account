@@ -192,15 +192,43 @@ sub print_plugin_page {
                     </div>
                     <div class="box-body">
                         <p><strong>Note:</strong> WHM plugins run as root. To manage WordPress accounts, first select a cPanel user account:</p>
-                        <form action="/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.html" method="get" target="_blank">
-                            <select name="cpanel_user" style="padding: 8px; margin: 10px 0; width: 200px;">
+                        <form id="userSelectionForm">
+                            <select id="cpanelUserSelect" style="padding: 8px; margin: 10px 0; width: 200px;">
                                 <option value="">Select cPanel Account...</option>
-                                <!-- Note: In production, populate this dynamically -->
+                                <!-- Populated dynamically via script below -->
                             </select>
-                            <button type="submit" class="btn" style="margin-left: 10px;">
+                            <button type="button" onclick="openPluginForUser()" class="btn" style="margin-left: 10px;">
                                 <i class="fa fa-external-link"></i> Open Plugin for User
                             </button>
                         </form>
+                        <script>
+                        // Populate cPanel users dynamically
+                        fetch('/json-api/listaccts?api.version=1&searchtype=user')
+                            .then(response => response.json())
+                            .then(data => {
+                                const select = document.getElementById('cpanelUserSelect');
+                                if (data.data && data.data.acct) {
+                                    data.data.acct.forEach(account => {
+                                        const option = document.createElement('option');
+                                        option.value = account.user;
+                                        option.textContent = account.user + ' (' + account.domain + ')';
+                                        select.appendChild(option);
+                                    });
+                                }
+                            })
+                            .catch(err => console.log('Could not load cPanel accounts'));
+
+                        function openPluginForUser() {
+                            const selectedUser = document.getElementById('cpanelUserSelect').value;
+                            if (!selectedUser) {
+                                alert('Please select a cPanel account first');
+                                return;
+                            }
+                            // Open the plugin with the selected user context
+                            const url = '/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.html?cpanel_user=' + encodeURIComponent(selectedUser);
+                            window.open(url, '_blank');
+                        }
+                        </script>
                         <p><em>This will open the main plugin interface in the context of the selected user.</em></p>
                     </div>
                 </div>
