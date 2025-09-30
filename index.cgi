@@ -6,7 +6,7 @@
 use strict;
 use warnings;
 
-print "Content-Type: text/html\n\n";
+print "Content-Type: text/html; charset=utf-8\n\n";
 
 # Serve the HTML interface
 open my $fh, '<', 'cpanel_wp_temp_account.html' or do {

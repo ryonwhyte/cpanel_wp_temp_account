@@ -982,7 +982,7 @@ sub call_wp_toolkit_api {
     }
 
     my %post_data = (
-        'cpanel_jsonapi_version' => 2,
+        'cpanel_jsonapi_apiversion' => 2,
         'cpanel_jsonapi_module' => 'WPToolkit',
         'cpanel_jsonapi_func' => $function,
         %$params
@@ -1497,7 +1497,7 @@ sub extract_path_from_dir {
     my ($wp_dir) = @_;
 
     # Check if WordPress is in subdirectory
-    if ($wp_dir =~ m|/(public_html|httpdocs|www)/(.*)|) {
+    if ($wp_dir =~ m{/(public_html|httpdocs|www)/(.*)}) {
         my $subpath = $2;
         return $subpath ? "/$subpath" : '/';
     }
