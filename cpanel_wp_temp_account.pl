@@ -22,39 +22,44 @@ use DBI;
 use File::Find;
 use File::Basename;
 
+# Package-level variables (accessible to all functions)
+our ($cgi, $logger, $user, $homedir, $config_dir, $log_file, $config_file, $activity_log, $rate_limit_file, $alerts_file, $stats_file, $wp_sites_cache);
+our ($config, $server_name, $server_port, $is_whm, $session_token);
+our ($target_user, $original_user, $impersonation_active);
+
 # Main execution function - only runs when script is invoked directly
 sub main {
 # Initialize
-my $cgi = CGI->new();
-my $logger = Cpanel::Logger->new();
-my $user = $ENV{'USER'} || $ENV{'REMOTE_USER'} || 'unknown';
-my $homedir = $ENV{'HOME'} || "/home/$user";
-my $config_dir = "$homedir/.wp_temp_accounts";
-my $log_file = "$config_dir/accounts.log";
-my $config_file = "$config_dir/config.json";
-my $activity_log = "$config_dir/activity.log";
-my $rate_limit_file = "$config_dir/rate_limits.json";
-my $alerts_file = "$config_dir/alerts.json";
-my $stats_file = "$config_dir/statistics.json";
-my $wp_sites_cache = "$config_dir/wp_sites_cache.json";
+$cgi = CGI->new();
+$logger = Cpanel::Logger->new();
+$user = $ENV{'USER'} || $ENV{'REMOTE_USER'} || 'unknown';
+$homedir = $ENV{'HOME'} || "/home/$user";
+$config_dir = "$homedir/.wp_temp_accounts";
+$log_file = "$config_dir/accounts.log";
+$config_file = "$config_dir/config.json";
+$activity_log = "$config_dir/activity.log";
+$rate_limit_file = "$config_dir/rate_limits.json";
+$alerts_file = "$config_dir/alerts.json";
+$stats_file = "$config_dir/statistics.json";
+$wp_sites_cache = "$config_dir/wp_sites_cache.json";
 
 # Create config directory if it doesn't exist
 make_path($config_dir) unless -d $config_dir;
 chmod 0700, $config_dir;
 
 # Auto-detect environment
-my $server_name = $ENV{'SERVER_NAME'} || $ENV{'HTTP_HOST'} || 'localhost';
-my $server_port = $ENV{'SERVER_PORT'} || '2083';
-my $is_whm = ($server_port eq '2087');
-my $session_token = get_session_token();
+$server_name = $ENV{'SERVER_NAME'} || $ENV{'HTTP_HOST'} || 'localhost';
+$server_port = $ENV{'SERVER_PORT'} || '2083';
+$is_whm = ($server_port eq '2087');
+$session_token = get_session_token();
 
 # Load configuration
-my $config = load_config();
+$config = load_config();
 
 # Handle user impersonation for WHM context
-my $target_user = $cgi->param('cpanel_user') || $user;
-my $original_user = $user;
-my $impersonation_active = 0;
+$target_user = $cgi->param('cpanel_user') || $user;
+$original_user = $user;
+$impersonation_active = 0;
 
 # If running in WHM context (as root) and a target user is specified
 if ($is_whm && $original_user eq 'root' && $target_user ne 'root' && $target_user ne 'unknown') {
