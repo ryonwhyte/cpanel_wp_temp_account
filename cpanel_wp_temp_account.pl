@@ -22,6 +22,30 @@ use DBI;
 use File::Find;
 use File::Basename;
 
+# --- Safe passwd lookup that survives broken Cpanel::PwCache ---
+sub _safe_getpwnam {
+    my ($user) = @_;
+    my $pw_obj;
+    eval {
+        require Cpanel::PwCache;
+        $pw_obj = Cpanel::PwCache::getpwnam($user);
+    };
+    if ($pw_obj) {
+        return {
+            name  => $pw_obj->get_name,
+            uid   => $pw_obj->get_uid,
+            gid   => $pw_obj->get_gid,
+            dir   => $pw_obj->get_dir,
+            shell => $pw_obj->get_shell,
+        };
+    }
+    # fallback to core Perl
+    my @p = getpwnam($user);
+    return @p
+      ? { name=>$p[0], uid=>$p[2], gid=>$p[3], dir=>$p[7], shell=>$p[8] }
+      : undef;
+}
+
 # Package-level variables (accessible to all functions)
 our ($cgi, $logger, $user, $homedir, $config_dir, $log_file, $config_file, $activity_log, $rate_limit_file, $alerts_file, $stats_file, $wp_sites_cache);
 our ($config, $server_name, $server_port, $is_whm, $session_token);
@@ -64,34 +88,35 @@ $impersonation_active = 0;
 # If running in WHM context (as root) and a target user is specified
 if ($is_whm && $original_user eq 'root' && $target_user ne 'root' && $target_user ne 'unknown') {
     eval {
-        require Cpanel::PwCache;
         require Cpanel::AccessIds;
 
-        my $pw = Cpanel::PwCache::getpwnam($target_user);
-        if ($pw) {
-            # Temporarily switch to target user context
-            Cpanel::AccessIds::pushuids($pw->get_uid, $pw->get_gid);
-            $impersonation_active = 1;
-
-            # Update environment variables for impersonated user
-            $user = $target_user;
-            $homedir = $pw->get_dir || "/home/$target_user";
-            $config_dir = "$homedir/.wp_temp_accounts";
-            $log_file = "$config_dir/accounts.log";
-            $config_file = "$config_dir/config.json";
-            $activity_log = "$config_dir/activity.log";
-            $rate_limit_file = "$config_dir/rate_limits.json";
-            $alerts_file = "$config_dir/alerts.json";
-            $stats_file = "$config_dir/statistics.json";
-            $wp_sites_cache = "$config_dir/wp_sites_cache.json";
-
-            # Create config directory for impersonated user if needed
-            make_path($config_dir) unless -d $config_dir;
-            chmod 0700, $config_dir;
-
-            # Reload configuration for the impersonated user
-            $config = load_config();
+        my $pw = _safe_getpwnam($target_user);
+        if (!$pw) {
+            die "Could not fetch uid/gid for user '$target_user'\n";
         }
+
+        # Temporarily switch to target user context
+        Cpanel::AccessIds::pushuids($pw->{uid}, $pw->{gid});
+        $impersonation_active = 1;
+
+        # Update environment variables for impersonated user
+        $user = $target_user;
+        $homedir = $pw->{dir} || "/home/$target_user";
+        $config_dir = "$homedir/.wp_temp_accounts";
+        $log_file = "$config_dir/accounts.log";
+        $config_file = "$config_dir/config.json";
+        $activity_log = "$config_dir/activity.log";
+        $rate_limit_file = "$config_dir/rate_limits.json";
+        $alerts_file = "$config_dir/alerts.json";
+        $stats_file = "$config_dir/statistics.json";
+        $wp_sites_cache = "$config_dir/wp_sites_cache.json";
+
+        # Create config directory for impersonated user if needed
+        make_path($config_dir) unless -d $config_dir;
+        chmod 0700, $config_dir;
+
+        # Reload configuration for the impersonated user
+        $config = load_config();
     };
     if ($@) {
         # If impersonation fails, continue as root but log the issue
