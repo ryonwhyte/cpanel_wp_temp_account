@@ -188,6 +188,25 @@ sub print_plugin_page {
             <div class="col col-8">
                 <div class="box">
                     <div class="box-header">
+                        <i class="fa fa-user-circle"></i> Select cPanel Account
+                    </div>
+                    <div class="box-body">
+                        <p><strong>Note:</strong> WHM plugins run as root. To manage WordPress accounts, first select a cPanel user account:</p>
+                        <form action="/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.html" method="get" target="_blank">
+                            <select name="cpanel_user" style="padding: 8px; margin: 10px 0; width: 200px;">
+                                <option value="">Select cPanel Account...</option>
+                                <!-- Note: In production, populate this dynamically -->
+                            </select>
+                            <button type="submit" class="btn" style="margin-left: 10px;">
+                                <i class="fa fa-external-link"></i> Open Plugin for User
+                            </button>
+                        </form>
+                        <p><em>This will open the main plugin interface in the context of the selected user.</em></p>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <div class="box-header">
                         <i class="fa fa-info-circle"></i> Plugin Information
                     </div>
                     <div class="box-body">
@@ -273,8 +292,18 @@ APPS_DIR="/var/cpanel/apps"
 mkdir -p "$APPS_DIR"
 chmod 755 "$APPS_DIR"
 
-# Copy AppConfig configuration file
-cp "$SCRIPT_DIR/wp_temp_accounts.conf" "/tmp/wp_temp_accounts.conf"
+# Create AppConfig configuration with correct entryurl
+cat > "/tmp/wp_temp_accounts.conf" << 'EOF'
+name=wp_temp_accounts
+service=whostmgr
+url=/cgi/wp_temp_accounts/wp_temp_accounts.cgi
+entryurl=wp_temp_accounts/wp_temp_accounts.cgi
+acls=all
+displayname=WP Temporary Accounts
+icon=wp_temp_accounts_icon.png
+target=_self
+group=plugins
+EOF
 
 # Register with AppConfig
 if [ -f "/usr/local/cpanel/bin/register_appconfig" ]; then
