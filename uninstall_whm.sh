@@ -49,6 +49,8 @@ WHM_TEMPLATES_DIR_OLD="${WHM_DOCROOT}/templates/wp_temp_accounts"
 WHM_ADDON_DIR="${WHM_DOCROOT}/addon_plugins"
 SHARED_DIR="/usr/local/cpanel/base/frontend/paper_lantern/cpanel_wp_temp_account"
 APPCONFIG_FILE="/var/cpanel/apps/wp_temp_accounts.conf"
+CPANEL_APPCONFIG_FILE="/var/cpanel/apps/wp_temp_accounts_cpanel.conf"
+CPANEL_PLUGIN_DIR="/usr/local/cpanel/base/3rdparty/wp_temp_accounts"
 CRON_SCRIPT="/usr/local/cpanel/scripts/cpanel_wp_temp_account_cleanup"
 
 log_info "Removing WHM plugin files..."
@@ -87,12 +89,21 @@ if [ -f "$WHM_ADDON_DIR/wp_temp_accounts_icon.png" ]; then
     log_info "✅ Removed plugin icon"
 fi
 
-# Remove AppConfig registration (only needed for old pattern)
+# Remove AppConfig registrations
 if [ -f "$APPCONFIG_FILE" ]; then
     rm -f "$APPCONFIG_FILE"
-    log_info "✅ Removed AppConfig registration (old pattern)"
-else
-    log_info "ℹ️  No AppConfig file found (new LiteSpeed pattern doesn't use AppConfig)"
+    log_info "✅ Removed WHM AppConfig registration"
+fi
+
+if [ -f "$CPANEL_APPCONFIG_FILE" ]; then
+    rm -f "$CPANEL_APPCONFIG_FILE"
+    log_info "✅ Removed cPanel AppConfig registration"
+fi
+
+# Remove cPanel 3rdparty plugin directory
+if [ -d "$CPANEL_PLUGIN_DIR" ]; then
+    rm -rf "$CPANEL_PLUGIN_DIR"
+    log_info "✅ Removed cPanel plugin directory"
 fi
 
 # Remove shared directory (optional - ask user)

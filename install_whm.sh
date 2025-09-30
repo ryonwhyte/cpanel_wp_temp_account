@@ -64,6 +64,15 @@ chmod 755 "$WHM_ADDON_DIR"
 
 log_info "Creating WHM plugin files..."
 
+# Check for CGI in old location and move if needed
+OLD_PLUGIN_DIR="/usr/local/cpanel/whostmgr/docroot/cgi/addons/wp_temp_accounts"
+if [ -f "$OLD_PLUGIN_DIR/wp_temp_accounts.cgi" ]; then
+    log_info "Moving CGI from old location to new location"
+    mv "$OLD_PLUGIN_DIR/wp_temp_accounts.cgi" "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
+    # Remove old directory if empty
+    rmdir "$OLD_PLUGIN_DIR" 2>/dev/null || true
+fi
+
 # Create the main CGI script (without Template dependencies)
 cat > "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi" << 'EOF'
 #!/bin/sh
@@ -330,9 +339,52 @@ log_info "Testing CGI script syntax..."
 if perl -c "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi" >/dev/null 2>&1; then
     log_info "✅ CGI script syntax OK"
 else
-    log_error "CGI script has syntax errors"
+    log_error "CGI script has syntax errors:"
     perl -c "$WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
     exit 1
+fi
+
+# Install cPanel-side plugin for end users
+log_info "Installing cPanel-side plugin for end users..."
+
+# Create 3rdparty directory for cPanel plugin
+CPANEL_PLUGIN_DIR="/usr/local/cpanel/base/3rdparty/wp_temp_accounts"
+mkdir -p "$CPANEL_PLUGIN_DIR"
+chmod 755 "$CPANEL_PLUGIN_DIR"
+
+# Create a simple wrapper script that redirects to the existing functionality
+cat > "$CPANEL_PLUGIN_DIR/index.cgi" << 'EOF'
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+print "Content-type: text/html\n\n";
+print <<HTML;
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WP Temporary Accounts</title>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0;url=/frontend/paper_lantern/cpanel_wp_temp_account/cpanel_wp_temp_account.html">
+</head>
+<body>
+    <p>Redirecting to WP Temporary Accounts...</p>
+</body>
+</html>
+HTML
+EOF
+
+chmod 755 "$CPANEL_PLUGIN_DIR/index.cgi"
+chown root:root "$CPANEL_PLUGIN_DIR/index.cgi"
+
+# Register cPanel AppConfig
+if [ -f "$SCRIPT_DIR/wp_temp_accounts_cpanel.conf" ]; then
+    log_info "Registering cPanel-side plugin..."
+    cp "$SCRIPT_DIR/wp_temp_accounts_cpanel.conf" /tmp/wp_temp_accounts_cpanel.conf
+    /usr/local/cpanel/bin/register_appconfig /tmp/wp_temp_accounts_cpanel.conf
+    rm -f /tmp/wp_temp_accounts_cpanel.conf
+    log_info "✅ cPanel plugin registered for end-user access"
 fi
 
 echo ""
@@ -340,17 +392,21 @@ echo "=================================================="
 echo -e "${GREEN}WHM Plugin Installation Complete!${NC}"
 echo "=================================================="
 echo ""
-echo "The WP Temporary Accounts plugin has been installed using the LiteSpeed pattern."
+echo "The WP Temporary Accounts plugin has been successfully installed."
 echo ""
 echo "🎯 ACCESS THE PLUGIN:"
-echo "  • WHM: Plugins → WP Temporary Accounts"
-echo "  • Direct: https://your-server:2087/cgi/wp_temp_accounts/wp_temp_accounts.cgi"
+echo "  • WHM Admins: Plugins → WP Temporary Accounts"
+echo "  • cPanel Users: Software → WP Temporary Accounts"
+echo "  • Direct WHM: https://your-server:2087/cgi/wp_temp_accounts/wp_temp_accounts.cgi"
 echo ""
 echo "📋 FILES INSTALLED:"
-echo "  • CGI Script: $WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
-echo "  • AppConfig: /var/cpanel/apps/wp_temp_accounts.conf"
+echo "  • WHM CGI: $WHM_PLUGIN_DIR/wp_temp_accounts.cgi"
+echo "  • WHM AppConfig: /var/cpanel/apps/wp_temp_accounts.conf"
+echo "  • cPanel Plugin: $CPANEL_PLUGIN_DIR/index.cgi"
+echo "  • cPanel AppConfig: /var/cpanel/apps/wp_temp_accounts_cpanel.conf"
 echo "  • Icon: $WHM_ADDON_DIR/wp_temp_accounts_icon.png"
 echo ""
-echo "✨ The plugin should now appear in WHM Plugins menu automatically!"
-echo "   Uses both WHMADDON comment and AppConfig registration for full compatibility."
+echo "✨ The plugin should now appear in:"
+echo "   • WHM Plugins menu for administrators"
+echo "   • cPanel Software section for end users"
 echo ""
